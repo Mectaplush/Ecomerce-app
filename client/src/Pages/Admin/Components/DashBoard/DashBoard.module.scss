@@ -1,0 +1,25 @@
+.wrapper {
+    padding: 24px;
+}
+
+.statistics {
+    margin-bottom: 24px;
+}
+
+.data-tables {
+    margin-bottom: 24px;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 500px;
+}
+
+// Responsive
+@media (max-width: 768px) {
+    .wrapper {
+        padding: 16px;
+    }
+}

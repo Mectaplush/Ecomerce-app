@@ -1,0 +1,13 @@
+.manager-product-watch {
+    h1 {
+        font-size: 18px;
+        font-weight: 600;
+        padding-bottom: 10px;
+    }
+}
+
+.wrapper {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}

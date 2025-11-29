@@ -1,0 +1,109 @@
+.wrapper {
+    padding: 24px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.title {
+    margin-bottom: 24px;
+
+    h2 {
+        font-size: 24px;
+        font-weight: 600;
+        color: #1a1a1a;
+        margin: 0;
+    }
+}
+
+.order-detail {
+    .ant-descriptions {
+        margin-bottom: 24px;
+    }
+
+    .price-summary {
+        margin-top: 24px;
+        padding: 16px;
+        background: #fafafa;
+        border-radius: 8px;
+
+        h3 {
+            margin-bottom: 16px;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .price-details {
+            p {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 8px;
+
+                &.total {
+                    margin-top: 16px;
+                    padding-top: 16px;
+                    border-top: 1px solid #f0f0f0;
+                    font-weight: 600;
+                    font-size: 16px;
+
+                    span {
+                        color: #f5222d;
+                    }
+                }
+            }
+        }
+    }
+}
+
+.timeline-time {
+    color: #8c8c8c;
+    font-size: 12px;
+}
+
+:global {
+    .ant-table-thead > tr > th {
+        background: #fafafa;
+        font-weight: 600;
+    }
+
+    .ant-table-tbody > tr:hover > td {
+        background: #f5f5f5;
+    }
+
+    .ant-modal-body {
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+}
+
+.products-list {
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+
+    &::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background-color: #d9d9d9;
+        border-radius: 3px;
+    }
+}
+
+.product-detail-item {
+    padding: 12px;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.product-quantity {
+    font-size: 13px;
+    color: #666;
+    margin-top: 4px;
+}

@@ -1,0 +1,22 @@
+.wrapper {
+    min-height: 100vh;
+
+    .sider {
+        margin-top: 16px;
+        background: #fff;
+
+        .menu {
+            padding: 12px;
+        }
+    }
+
+    .content-layout {
+        padding: 16px;
+
+        .content {
+            padding: 24px;
+            background: #fff;
+            border-radius: 8px;
+        }
+    }
+}

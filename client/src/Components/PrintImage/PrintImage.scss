@@ -1,0 +1,253 @@
+.print-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+}
+
+.print-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+
+    h2 {
+        margin: 0;
+        color: #333;
+    }
+
+    div {
+        display: flex;
+        gap: 10px;
+    }
+}
+
+.print-button {
+    background-color: #4caf50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+
+    &:hover {
+        background-color: #45a049;
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+}
+
+.edit-button {
+    background-color: #337ab7;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+
+    &:hover {
+        background-color: #286090;
+    }
+
+    &:active {
+        transform: translateY(1px);
+    }
+}
+
+.print-content {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: white;
+}
+
+.print-header {
+    text-align: right;
+    margin-bottom: 10px;
+    position: relative;
+
+    .logo-section {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid #ccc;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+
+    .logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100px;
+        height: 80px;
+        background-color: #999;
+        border-radius: 5px;
+        color: white;
+        font-size: 32px;
+        font-weight: bold;
+        margin-right: 20px;
+    }
+
+    .company-info {
+        text-align: right;
+        line-height: 1.4;
+        font-size: 14px;
+
+        .company-name {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        a {
+            color: #0066cc;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    .quote-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin: 20px 0;
+    }
+
+    .quote-date {
+        text-align: right;
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+}
+
+.quote-table {
+    margin-bottom: 20px;
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #2196f3;
+            color: white;
+            font-weight: bold;
+            white-space: nowrap;
+        }
+
+        .stt {
+            width: 50px;
+        }
+
+        .product-name {
+            width: 40%;
+            text-align: left;
+        }
+
+        .warranty,
+        .quantity,
+        .price,
+        .total {
+            width: 15%;
+        }
+
+        .product-name-cell {
+            text-align: left;
+        }
+
+        .right-align {
+            text-align: right;
+            font-weight: bold;
+        }
+
+        .shipping-row,
+        .other-fee-row {
+            background-color: #f2f2f2;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background-color: #e6f7ff;
+        }
+    }
+}
+
+.print-footer {
+    text-align: center;
+
+    .note {
+        text-align: left;
+        margin-bottom: 20px;
+        font-size: 14px;
+        line-height: 1.4;
+
+        .note-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        a {
+            color: #0066cc;
+            text-decoration: none;
+
+            &:hover {
+                text-decoration: underline;
+            }
+        }
+    }
+
+    .thank-you {
+        font-size: 18px;
+        font-weight: bold;
+        margin-top: 20px;
+    }
+}
+
+@media print {
+    .print-actions {
+        display: none;
+    }
+
+    .print-content {
+        border: none;
+        padding: 0;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        background: white;
+    }
+
+    tr {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
+
+    .print-footer {
+        margin-top: 20px;
+    }
+
+    a {
+        text-decoration: none;
+        color: #000;
+    }
+}

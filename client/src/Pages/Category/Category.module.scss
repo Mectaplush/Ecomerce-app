@@ -1,0 +1,30 @@
+.content {
+    width: 90%;
+    margin: 20px auto;
+}
+
+.product-item {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.pagination-container {
+    margin-top: 24px;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    margin: 16px 0;
+}
+
+.filter-section {
+    margin-bottom: 16px;
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 400px;
+}
