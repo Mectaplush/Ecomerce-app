@@ -29,7 +29,7 @@ async function createProductEmbeddings(product) {
 
         // Embed images if they exist
         if (product.images) {
-            const imageUrls = product.images.split(',').map(url => url.trim());
+            const imageUrls = product.images.split(',').map((url) => url.trim());
             for (let i = 0; i < imageUrls.length; i++) {
                 const imageId = `${product.id}_image${i}`;
                 const imageDescription = `Product image for ${product.name}`;
@@ -70,12 +70,12 @@ async function updateProductEmbeddings(product, oldImages = null) {
             // If images changed, delete old image embeddings first
             if (oldImages && oldImages !== product.images) {
                 embeddingService.index.deleteMany({
-                    productId: { $eq: `${product.id}}` }
-                })
+                    productId: { $eq: `${product.id}}` },
+                });
             }
 
             // Create new image embeddings
-            const imageUrls = product.images.split(',').map(url => url.trim());
+            const imageUrls = product.images.split(',').map((url) => url.trim());
             for (let i = 0; i < imageUrls.length; i++) {
                 const imageId = `${product.id}_image${i}`;
                 const imageDescription = `Product image for ${product.name}`;
@@ -453,10 +453,17 @@ class controllerProducts {
             dataPreview.map(async (item) => {
                 const user = await modelUser.findOne({ where: { id: item.userId } });
                 return {
-                    ...item,
+                    id: item.id,
+                    productId: item.productId,
+                    userId: item.userId,
+                    rating: item.rating,
+                    content: item.content,
+                    createdAt: item.createdAt,
+                    updatedAt: item.updatedAt,
                     user: {
                         id: user.id,
                         name: user.fullName,
+                        avatar: user.avatar,
                     },
                 };
             }),

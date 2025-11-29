@@ -6,13 +6,13 @@ const { pinecone } = require('../config/pinecone.js');
 class MultimodalEmbeddingService {
 
   constructor() {
-    this.api_key = process.env.OPEN_API_KEY;
+    this.api_key = process.env.OPENAI_API_KEY;
     this.embeddings = new OpenAIEmbeddings({
-      apiKey: process.env.OPEN_API_KEY,
+      apiKey: process.env.OPENAI_API_KEY,
       modelName: "text-embedding-3-small", // Cheaper option for starter plan
     });
 
-    if (!process.env.OPEN_API_KEY) {
+    if (!process.env.OPENAI_API_KEY) {
       throw new Error("ApiKey not defined")
     }
 

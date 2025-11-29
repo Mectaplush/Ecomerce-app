@@ -48,7 +48,6 @@ function LoginUser() {
             }, 1500);
             navigate('/');
         } catch (error) {
-            console.log(error);
             const errorMessage = error.response?.data?.message || 'Đăng nhập thất bại!';
             message.error({
                 content: errorMessage,
@@ -269,7 +268,6 @@ function LoginUser() {
                     </div>
                 </Form>
             </div>
-
             <footer>
                 <Footer />
             </footer>

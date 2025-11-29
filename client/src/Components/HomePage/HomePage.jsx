@@ -12,7 +12,6 @@ import { Row, Col, Card, Typography, Divider, Button } from 'antd';
 
 const { Title, Paragraph } = Typography;
 
-// ...existing code...
 const settings = {
     dots: true,
     infinite: true,
@@ -70,7 +69,6 @@ const settings = {
         },
     ],
 };
-// ...existing code...
 
 const cx = classNames.bind(styles);
 
@@ -149,11 +147,7 @@ function HomePage() {
 
             <div className={cx('hot-sale')}>
                 <div>
-                    <img
-                        style={{ width: '20%', height: '50px' }}
-                        src="https://pcmarket.vn/static/assets/2021/images/hot-sale-cuoi-tuan-1.gif"
-                        alt=""
-                    />
+                    <img src="https://pcmarket.vn/static/assets/2021/images/hot-sale-cuoi-tuan-1.gif" alt="" />
                 </div>
                 <Slider {...settings}>
                     {productHotSale.map((product) => (
@@ -167,9 +161,16 @@ function HomePage() {
             <div className={cx('category-list')}>
                 {category.map((item) => (
                     <div key={item.id}>
-                        <div className={cx('category-item')} key={item.id}>
-                            <h2>{item.category.name}</h2>
-                            <button onClick={() => navigate(`/category/${item.category.id}`)}>Xem tất cả</button>
+                        <div className={cx('category-header')}>
+                            <div className={cx('category-item')}>
+                                <h2>{item.category.name}</h2>
+                            </div>
+                            <button
+                                className={cx('category-button')}
+                                onClick={() => navigate(`/category/${item.category.id}`)}
+                            >
+                                Xem tất cả
+                            </button>
                         </div>
                         <div className={cx('slider-container')}>
                             <Slider {...settings}>

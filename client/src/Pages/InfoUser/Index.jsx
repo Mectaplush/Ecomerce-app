@@ -28,6 +28,8 @@ function Index() {
     const [currentComponent, setCurrentComponent] = useState(<InfoUser />);
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    // Thêm state để track selected menu key
+    const [selectedMenuKey, setSelectedMenuKey] = useState(['profile']);
 
     const { pathname } = useLocation();
 
@@ -40,9 +42,18 @@ function Index() {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Sửa useEffect để sync menu với URL
     useEffect(() => {
         if (pathname === '/orders') {
             setCurrentComponent(<ManagerOrder />);
+            setSelectedMenuKey(['orders']); // Cập nhật selected key
+        } else if (pathname === '/profile') {
+            setCurrentComponent(<InfoUser />);
+            setSelectedMenuKey(['profile']);
+        } else {
+            // Default case
+            setCurrentComponent(<InfoUser />);
+            setSelectedMenuKey(['profile']);
         }
     }, [pathname]);
 
@@ -53,6 +64,7 @@ function Index() {
             return;
         }
         setCurrentComponent(component);
+        setSelectedMenuKey([key]); // Cập nhật selected key khi click
         if (isMobile) {
             setDrawerVisible(false);
         }
@@ -93,8 +105,14 @@ function Index() {
         },
     ];
 
+    // Sửa renderSider để dùng selectedKeys thay vì defaultSelectedKeys
     const renderSider = () => (
-        <Menu mode="inline" defaultSelectedKeys={['profile']} items={menuItems} className={cx('menu')} />
+        <Menu
+            mode="inline"
+            selectedKeys={selectedMenuKey} // Thay đổi từ defaultSelectedKeys
+            items={menuItems}
+            className={cx('menu')}
+        />
     );
 
     return (

@@ -40,6 +40,20 @@ class PaymentsController {
                 where: { userId: id },
             });
 
+            // Kiểm tra stock trước khi thanh toán
+            for (const cartItem of dataCart) {
+                const product = await modelProducts.findOne({ where: { id: cartItem.productId } });
+                if (!product) {
+                    throw new BadRequestError(`Sản phẩm ID ${cartItem.productId} không tồn tại`);
+                }
+                if (product.stock < cartItem.quantity) {
+                    throw new BadRequestError(
+                        `Sản phẩm "${product.name}" chỉ còn ${product.stock} trong kho, không đủ cho yêu cầu ${cartItem.quantity}`,
+                    );
+                }
+            }
+
+            // Tạo payment records
             const paymentPromises = dataCart.map((cartItem) => {
                 return modelPayments.create({
                     userId: id,
@@ -51,25 +65,35 @@ class PaymentsController {
                     totalPrice: totalPrice,
                     status: 'pending',
                     typePayment: typePayment,
-                    idPayment: paymentId, // Sử dụng paymentId thay vì singlePaymentId
+                    idPayment: paymentId,
                 });
             });
 
-            await Promise.all(paymentPromises);
+            // Trừ stock cho từng sản phẩm
+            const stockUpdatePromises = dataCart.map(async (cartItem) => {
+                const product = await modelProducts.findOne({ where: { id: cartItem.productId } });
+                const newStock = product.stock - cartItem.quantity;
+                await modelProducts.update({ stock: newStock }, { where: { id: cartItem.productId } });
+                console.log(
+                    `✅ COD Payment: Reduced stock for ${product.name} by ${cartItem.quantity}. New stock: ${newStock}`,
+                );
+            });
+
+            await Promise.all([...paymentPromises, ...stockUpdatePromises]);
 
             // Clear the cart after successful payment creation
             await modelCart.destroy({ where: { userId: id } });
 
-            new OK({ message: 'Thanh toán thanh cong', metadata: paymentId }).send(res);
+            return new OK({ message: 'Thanh toán thanh cong', metadata: paymentId }).send(res);
         }
 
         if (typePayment === 'MOMO') {
             var partnerCode = 'MOMO';
-            var accessKey = 'F8BBA842ECF85';
-            var secretkey = 'K951B6PE1waDMi640xX08PD3vg6EkVlz';
+            var accessKey = process.env.MOMO_ACCESS_KEY;
+            var secretkey = process.env.MOMO_SECRET_KEY;
             var requestId = partnerCode + new Date().getTime();
             var orderId = requestId;
-            var orderInfo = `thanh toan ${findCart[0]?.userId}`; // nội dung giao dịch thanh toán
+            var orderInfo = `Thanh toán ${findCart[0]?.userId}`; // nội dung giao dịch thanh toán
             var redirectUrl = 'http://localhost:3000/api/check-payment-momo'; // 8080
             var ipnUrl = 'http://localhost:3000/api/check-payment-momo';
             var amount = totalPrice;
@@ -123,24 +147,26 @@ class PaymentsController {
                     'Content-Type': 'application/json',
                 },
             });
-            new OK({ message: 'Thanh toán thông báo', metadata: response.data }).send(res);
+            return new OK({ message: 'Thanh toán thông báo', metadata: response.data }).send(res);
         }
 
         if (typePayment === 'VNPAY') {
             const vnpay = new VNPay({
-                tmnCode: 'DH2F13SW',
-                secureSecret: 'NXZM3DWFR0LC4R5VBK85OJZS1UE9KI6F',
+                tmnCode: process.env.VNPAY_TMN_CODE,
+                secureSecret: process.env.VNPAY_SECURE_SECRET,
                 vnpayHost: 'https://sandbox.vnpayment.vn',
                 testMode: true, // tùy chọn
                 hashAlgorithm: 'SHA512', // tùy chọn
                 loggerFn: ignoreLogger, // tùy chọn
             });
+
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             const vnpayResponse = await vnpay.buildPaymentUrl({
-                vnp_Amount: totalPrice, //
+                vnp_Amount: totalPrice,
                 vnp_IpAddr: '127.0.0.1', //
-                vnp_TxnRef: `${findCart[0]?.userId} + ${paymentId}`, // Sử dụng paymentId thay vì singlePaymentId
+                //vnp_TxnRef: `${findCart[0]?.userId} + ${paymentId}`, // Sử dụng paymentId thay vì singlePaymentId
+                vnp_TxnRef: `${findCart[0]?.userId}_${paymentId}`,
                 vnp_OrderInfo: `${findCart[0]?.userId} `,
                 vnp_OrderType: ProductCode.Other,
                 vnp_ReturnUrl: `http://localhost:3000/api/check-payment-vnpay`, //
@@ -148,7 +174,7 @@ class PaymentsController {
                 vnp_CreateDate: dateFormat(new Date()), // tùy chọn, mặc định là hiện tại
                 vnp_ExpireDate: dateFormat(tomorrow), // tùy chọn
             });
-            new OK({ message: 'Thanh toán thông báo', metadata: vnpayResponse }).send(res);
+            return new OK({ message: 'Thanh toán thông báo', metadata: vnpayResponse }).send(res);
         }
 
         throw new BadRequestError('Phương thức thanh toán không hợp lệ');
@@ -160,10 +186,27 @@ class PaymentsController {
         if (resultCode === '0') {
             const result = orderInfo.split(' ')[2];
             const findCart = await modelCart.findAll({ userId: result });
-            // Tạo mã thanh toán mới cho mỗi thanh toán Momo
             const paymentId = generatePayID();
 
-            findCart.map(async (item) => {
+            // Kiểm tra và trừ stock cho từng sản phẩm
+            const paymentPromises = findCart.map(async (item) => {
+                // Kiểm tra stock trước khi tạo payment
+                const product = await modelProducts.findOne({ where: { id: item.productId } });
+                if (!product) {
+                    throw new Error(`Sản phẩm ID ${item.productId} không tồn tại`);
+                }
+                if (product.stock < item.quantity) {
+                    throw new Error(`Sản phẩm "${product.name}" không đủ hàng`);
+                }
+
+                // Trừ stock
+                const newStock = product.stock - item.quantity;
+                await modelProducts.update({ stock: newStock }, { where: { id: item.productId } });
+                console.log(
+                    `✅ MOMO Payment: Reduced stock for ${product.name} by ${item.quantity}. New stock: ${newStock}`,
+                );
+
+                // Tạo payment record
                 return modelPayments.create({
                     userId: item.userId,
                     productId: item.productId,
@@ -174,10 +217,11 @@ class PaymentsController {
                     totalPrice: findCart.reduce((total, item) => total + item.totalPrice, 0),
                     status: 'pending',
                     typePayment: 'MOMO',
-                    idPayment: paymentId, // Sử dụng paymentId mới
+                    idPayment: paymentId,
                 });
             });
 
+            await Promise.all(paymentPromises);
             await modelCart.destroy({ where: { userId: result } });
             return res.redirect(`http://localhost:5173/payment/${paymentId}`);
         }
@@ -189,7 +233,26 @@ class PaymentsController {
             const idCart = vnp_OrderInfo.split(' ')[0];
             const paymentId = generatePayID();
             const findCart = await modelCart.findAll({ userId: idCart });
-            findCart.map(async (item) => {
+
+            // Kiểm tra và trừ stock cho từng sản phẩm
+            const paymentPromises = findCart.map(async (item) => {
+                // Kiểm tra stock trước khi tạo payment
+                const product = await modelProducts.findOne({ where: { id: item.productId } });
+                if (!product) {
+                    throw new Error(`Sản phẩm ID ${item.productId} không tồn tại`);
+                }
+                if (product.stock < item.quantity) {
+                    throw new Error(`Sản phẩm "${product.name}" không đủ hàng`);
+                }
+
+                // Trừ stock
+                const newStock = product.stock - item.quantity;
+                await modelProducts.update({ stock: newStock }, { where: { id: item.productId } });
+                console.log(
+                    `✅ VNPAY Payment: Reduced stock for ${product.name} by ${item.quantity}. New stock: ${newStock}`,
+                );
+
+                // Tạo payment record
                 return modelPayments.create({
                     userId: item.userId,
                     productId: item.productId,
@@ -204,6 +267,7 @@ class PaymentsController {
                 });
             });
 
+            await Promise.all(paymentPromises);
             await modelCart.destroy({ where: { userId: idCart } });
             return res.redirect(`http://localhost:5173/payment/${paymentId}`);
         }
@@ -252,11 +316,49 @@ class PaymentsController {
     async cancelOrder(req, res) {
         const { id } = req.user;
         const { orderId } = req.body;
-        const payment = await modelPayments.findAll({ where: { userId: id, idPayment: orderId } });
-        payment.map(async (item) => {
-            item.status = 'cancelled';
-            await item.save();
+
+        // Lấy thông tin payments trước khi cập nhật
+        const payments = await modelPayments.findAll({ where: { userId: id, idPayment: orderId } });
+
+        if (!payments.length) {
+            throw new BadRequestError('Không tìm thấy đơn hàng');
+        }
+
+        // Kiểm tra xem đơn hàng có thể hủy không
+        const firstPayment = payments[0];
+        if (firstPayment.status !== 'pending') {
+            throw new BadRequestError('Chỉ có thể hủy đơn hàng đang chờ xử lý');
+        }
+
+        // Không cho phép hủy đơn hàng đã thanh toán online
+        if (firstPayment.typePayment === 'MOMO' || firstPayment.typePayment === 'VNPAY') {
+            throw new BadRequestError('Không thể hủy đơn hàng đã thanh toán online');
+        }
+
+        // Hoàn lại stock cho từng sản phẩm (chỉ COD mới hoàn lại vì đã trừ stock khi đặt hàng)
+        if (firstPayment.typePayment === 'COD') {
+            const stockUpdatePromises = payments.map(async (payment) => {
+                const product = await modelProducts.findOne({ where: { id: payment.productId } });
+
+                if (product) {
+                    const newStock = product.stock + payment.quantity;
+                    await modelProducts.update({ stock: newStock }, { where: { id: payment.productId } });
+                    console.log(
+                        `✅ Restored ${payment.quantity} units to product ${product.name}. New stock: ${newStock}`,
+                    );
+                }
+            });
+            await Promise.all(stockUpdatePromises);
+        }
+
+        // Cập nhật trạng thái đơn hàng
+        const statusUpdatePromises = payments.map(async (payment) => {
+            payment.status = 'cancelled';
+            await payment.save();
         });
+
+        await Promise.all(statusUpdatePromises);
+
         new OK({ message: 'Hủy đơn hàng thành công' }).send(res);
     }
 

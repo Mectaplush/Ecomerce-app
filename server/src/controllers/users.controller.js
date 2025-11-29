@@ -5,6 +5,7 @@ const modelPayment = require('../models/payments.model');
 const modelUserWatch = require('../models/userWatchProduct.model');
 const modelOtp = require('../models/otp.model');
 const modelCategory = require('../models/category.model');
+const { cloudinary } = require('../config/cloudinary');
 
 const { Op, Sequelize } = require('sequelize');
 
@@ -135,14 +136,13 @@ class controllerUser {
             fullName: findUser.fullName,
             email: findUser.email,
             isAdmin: findUser.isAdmin,
-
             address: findUser.address,
             phone: findUser.phone,
+            avatar: findUser.avatar,
             // Thêm các trường khác nếu cần
         };
 
         const auth = CryptoJS.AES.encrypt(JSON.stringify(userInfo), process.env.SECRET_CRYPTO).toString();
-        console.log('Auth user:', auth);
 
         new OK({ message: 'success', metadata: auth }).send(res);
     }
@@ -345,13 +345,13 @@ class controllerUser {
             res.cookie('token', token, {
                 httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
                 secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // ChONGL tấn công CSRF
+                sameSite: 'Strict', // Chống tấn công CSRF
                 maxAge: 15 * 60 * 1000, // 15 phút
             });
             res.cookie('logged', 1, {
                 httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
                 secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // ChONGL tấn công CSRF
+                sameSite: 'Strict', // Chống tấn công CSRF
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
             });
             res.cookie('refreshToken', refreshToken, {
@@ -588,6 +588,87 @@ class controllerUser {
             }).send(res);
         } catch (error) {
             console.error('Error getting pie chart data:', error);
+            throw error;
+        }
+    }
+
+    async uploadAvatar(req, res) {
+        try {
+            const { id } = req.user;
+
+            if (!req.file) {
+                throw new BadUserRequestError('Vui lòng chọn file ảnh để upload');
+            }
+
+            // Tìm user hiện tại
+            const user = await modelUser.findOne({ where: { id } });
+            if (!user) {
+                throw new BadRequestError('Không tìm thấy tài khoản');
+            }
+
+            // Xóa avatar cũ trên Cloudinary nếu có
+            if (user.avatar) {
+                try {
+                    // Lấy public_id từ URL avatar cũ
+                    const urlParts = user.avatar.split('/');
+                    const publicIdWithExtension = urlParts[urlParts.length - 1];
+                    const publicId = publicIdWithExtension.split('.')[0];
+                    const folderPath = `shop-pc/avatars/${publicId}`;
+
+                    await cloudinary.uploader.destroy(folderPath);
+                } catch (deleteError) {
+                    console.log('Error deleting old avatar:', deleteError);
+                    // Không throw error vì việc xóa ảnh cũ không quan trọng bằng upload ảnh mới
+                }
+            }
+
+            // Cập nhật URL avatar mới
+            await user.update({ avatar: req.file.path });
+
+            new OK({
+                message: 'Upload avatar thành công',
+                metadata: { avatarUrl: req.file.path },
+            }).send(res);
+        } catch (error) {
+            console.error('Upload avatar error:', error);
+            throw error;
+        }
+    }
+
+    async deleteAvatar(req, res) {
+        try {
+            const { id } = req.user;
+
+            // Tìm user hiện tại
+            const user = await modelUser.findOne({ where: { id } });
+            if (!user) {
+                throw new BadRequestError('Không tìm thấy tài khoản');
+            }
+
+            if (!user.avatar) {
+                throw new BadUserRequestError('Bạn chưa có avatar để xóa');
+            }
+
+            // Xóa avatar trên Cloudinary
+            try {
+                const urlParts = user.avatar.split('/');
+                const publicIdWithExtension = urlParts[urlParts.length - 1];
+                const publicId = publicIdWithExtension.split('.')[0];
+                const folderPath = `shop-pc/avatars/${publicId}`;
+
+                await cloudinary.uploader.destroy(folderPath);
+            } catch (deleteError) {
+                console.log('Error deleting avatar from Cloudinary:', deleteError);
+            }
+
+            // Cập nhật avatar thành null trong database
+            await user.update({ avatar: null });
+
+            new OK({
+                message: 'Xóa avatar thành công',
+            }).send(res);
+        } catch (error) {
+            console.error('Delete avatar error:', error);
             throw error;
         }
     }

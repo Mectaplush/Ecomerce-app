@@ -205,7 +205,6 @@ function ManagerProduct() {
         }
     };
 
-
     // Add this useEffect to debug modal state
     useEffect(() => {
         console.log('Modal state:', isModalOpen);
@@ -290,7 +289,7 @@ function ManagerProduct() {
         setCsvUploading(true);
         setCsvErrors([]); // Clear previous errors
         setCsvSuccess(''); // Clear previous success
-        
+
         let successCount = 0;
         let errorCount = 0;
         /**
@@ -305,7 +304,7 @@ function ManagerProduct() {
         try {
             for (let i = 0; i < csvFiles.length; i++) {
                 const file = csvFiles[i];
-                
+
                 try {
                     const csvData = await new Promise((resolve, reject) => {
                         const reader = new FileReader();
@@ -317,20 +316,20 @@ function ManagerProduct() {
                     await insertProductsByCsv({ csvData });
                     successCount++;
                     successes.push(file.name);
-                    
                 } catch (error) {
                     errorCount++;
                     errors.push(`${file.name}: ${error.response?.data?.message || error.message}`);
                 }
             }
 
-            const successMessage = `Nhập thành công ${successCount} file CSV: ` + successes.reduce((a, b) => a + ", " + b);
+            const successMessage =
+                `Nhập thành công ${successCount} file CSV: ` + successes.reduce((a, b) => a + ', ' + b);
 
             if (successCount > 0) {
                 setCsvSuccess(successMessage);
                 await fetchProducts();
             }
-            
+
             if (errorCount > 0) {
                 setCsvErrors(errors);
             }
@@ -362,24 +361,26 @@ function ManagerProduct() {
             return false;
         },
         onChange: (info) => {
-            const validFiles = info.fileList.filter(file => {
-                const isCSV = file.type === 'text/csv' || file.name.endsWith('.csv');
-                return isCSV;
-            }).map(file => file.originFileObj || file);
-            
+            const validFiles = info.fileList
+                .filter((file) => {
+                    const isCSV = file.type === 'text/csv' || file.name.endsWith('.csv');
+                    return isCSV;
+                })
+                .map((file) => file.originFileObj || file);
+
             setCsvFiles(validFiles);
             if (validFiles.length > 0) {
                 setCsvErrors([]); // Clear errors when files selected
             }
         },
         onRemove: (file) => {
-            setCsvFiles(prev => prev.filter(f => f.uid !== file.uid));
+            setCsvFiles((prev) => prev.filter((f) => f.uid !== file.uid));
         },
         fileList: csvFiles.map((file, index) => ({
             uid: file.uid || `csv-${index}`,
             name: file.name,
             status: 'done',
-            originFileObj: file
+            originFileObj: file,
         })),
         multiple: true,
         maxCount: 10,
@@ -395,7 +396,7 @@ function ManagerProduct() {
         setReEmbedLoading(true);
         setReEmbedError('');
         setReEmbedSuccess('');
-        
+
         try {
             const result = await reEmbedAllProducts();
             setReEmbedSuccess(result.message || 'Đã re-embed tất cả sản phẩm thành công!');
@@ -631,24 +632,36 @@ function ManagerProduct() {
                 width={600}
             >
                 <div style={{ marginBottom: '16px' }}>
-                    <p><strong>Hướng dẫn định dạng CSV:</strong></p>
+                    <p>
+                        <strong>Hướng dẫn định dạng CSV:</strong>
+                    </p>
                     <ul>
                         <li>Có thể chọn nhiều file CSV cùng lúc</li>
-                        <li>File phải có header với các cột bắt buộc: name, price, description, images, categoryId, stock, componentType</li>
+                        <li>
+                            File phải có header với các cột bắt buộc: name, price, description, images, categoryId,
+                            stock, componentType
+                        </li>
                         <li>Các cột tùy chọn: discount, cpu, main, ram, storage, gpu, power, caseComputer, coolers</li>
-                        <li>componentType phải là một trong: cpu, mainboard, ram, hdd, ssd, vga, power, cooler, case, monitor, keyboard, mouse, headset, pc</li>
+                        <li>
+                            componentType phải là một trong: cpu, mainboard, ram, hdd, ssd, vga, power, cooler, case,
+                            monitor, keyboard, mouse, headset, pc
+                        </li>
                         <li>Sử dụng dấu phẩy (,) để phân tách các cột</li>
                     </ul>
 
-                    <p><strong>Ví dụ header:</strong></p>
-                    <code style={{
-                        display: 'block',
-                        padding: '8px',
-                        backgroundColor: '#f5f5f5',
-                        borderRadius: '4px',
-                        fontSize: '12px',
-                        overflow: 'auto'
-                    }}>
+                    <p>
+                        <strong>Ví dụ header:</strong>
+                    </p>
+                    <code
+                        style={{
+                            display: 'block',
+                            padding: '8px',
+                            backgroundColor: '#f5f5f5',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            overflow: 'auto',
+                        }}
+                    >
                         name,price,description,images,categoryId,stock,componentType,discount
                     </code>
                 </div>
@@ -670,28 +683,32 @@ function ManagerProduct() {
 
                 {/* Success Message */}
                 {csvSuccess && (
-                    <div style={{ 
-                        marginTop: '12px', 
-                        padding: '8px 12px', 
-                        backgroundColor: '#f6ffed', 
-                        border: '1px solid #b7eb8f',
-                        borderRadius: '6px',
-                        color: '#52c41a'
-                    }}>
+                    <div
+                        style={{
+                            marginTop: '12px',
+                            padding: '8px 12px',
+                            backgroundColor: '#f6ffed',
+                            border: '1px solid #b7eb8f',
+                            borderRadius: '6px',
+                            color: '#52c41a',
+                        }}
+                    >
                         <strong>✓ {csvSuccess}</strong>
                     </div>
                 )}
 
                 {/* Error Messages */}
                 {csvErrors.length > 0 && (
-                    <div style={{ 
-                        marginTop: '12px', 
-                        padding: '8px 12px', 
-                        backgroundColor: '#fff2f0', 
-                        border: '1px solid #ffccc7',
-                        borderRadius: '6px',
-                        color: '#ff4d4f'
-                    }}>
+                    <div
+                        style={{
+                            marginTop: '12px',
+                            padding: '8px 12px',
+                            backgroundColor: '#fff2f0',
+                            border: '1px solid #ffccc7',
+                            borderRadius: '6px',
+                            color: '#ff4d4f',
+                        }}
+                    >
                         <strong>⚠ Lỗi khi nhập CSV:</strong>
                         <ul style={{ marginTop: '8px', marginBottom: '0', paddingLeft: '20px' }}>
                             {csvErrors.map((error, index) => (
@@ -718,9 +735,14 @@ function ManagerProduct() {
                 width={600}
             >
                 <div style={{ marginBottom: '16px' }}>
-                    <p><strong>⚠️ Cảnh báo:</strong></p>
-                    <p>Bạn có muốn xóa và re-embed tất cả sản phẩm không? Quá trình này có thể rất tốn kém thời gian và chi phí.</p>
-                    
+                    <p>
+                        <strong>⚠️ Cảnh báo:</strong>
+                    </p>
+                    <p>
+                        Bạn có muốn xóa và re-embed tất cả sản phẩm không? Quá trình này có thể rất tốn kém thời gian và
+                        chi phí.
+                    </p>
+
                     <ul style={{ marginTop: '12px', color: '#666' }}>
                         <li>Tất cả embeddings hiện tại sẽ bị xóa</li>
                         <li>Toàn bộ sản phẩm sẽ được re-embed lại</li>
@@ -731,28 +753,32 @@ function ManagerProduct() {
 
                 {/* Success Message */}
                 {reEmbedSuccess && (
-                    <div style={{ 
-                        marginTop: '12px', 
-                        padding: '8px 12px', 
-                        backgroundColor: '#f6ffed', 
-                        border: '1px solid #b7eb8f',
-                        borderRadius: '6px',
-                        color: '#52c41a'
-                    }}>
+                    <div
+                        style={{
+                            marginTop: '12px',
+                            padding: '8px 12px',
+                            backgroundColor: '#f6ffed',
+                            border: '1px solid #b7eb8f',
+                            borderRadius: '6px',
+                            color: '#52c41a',
+                        }}
+                    >
                         <strong>✓ {reEmbedSuccess}</strong>
                     </div>
                 )}
 
                 {/* Error Messages */}
                 {reEmbedError && (
-                    <div style={{ 
-                        marginTop: '12px', 
-                        padding: '8px 12px', 
-                        backgroundColor: '#fff2f0', 
-                        border: '1px solid #ffccc7',
-                        borderRadius: '6px',
-                        color: '#ff4d4f'
-                    }}>
+                    <div
+                        style={{
+                            marginTop: '12px',
+                            padding: '8px 12px',
+                            backgroundColor: '#fff2f0',
+                            border: '1px solid #ffccc7',
+                            borderRadius: '6px',
+                            color: '#ff4d4f',
+                        }}
+                    >
                         <strong>⚠ Lỗi khi re-embed:</strong>
                         <p style={{ marginTop: '8px', marginBottom: '0' }}>{reEmbedError}</p>
                     </div>

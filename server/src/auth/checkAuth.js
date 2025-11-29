@@ -10,9 +10,19 @@ const asyncHandler = (fn) => {
 
 const authUser = async (req, res, next) => {
     try {
-        const user = req.cookies.token;
-        if (!user) throw new BadUserRequestError('Vui lòng đăng nhập');
-        const token = user;
+        // Kiểm tra token từ cookie trước
+        let token = req.cookies.token;
+
+        // Nếu không có token trong cookie, kiểm tra Authorization header
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7); // Bỏ "Bearer " prefix
+            }
+        }
+
+        if (!token) throw new BadUserRequestError('Vui lòng đăng nhập');
+
         const decoded = await verifyToken(token);
         req.user = decoded;
         next();
@@ -23,9 +33,19 @@ const authUser = async (req, res, next) => {
 
 const authAdmin = async (req, res, next) => {
     try {
-        const user = req.cookies.token;
-        if (!user) throw new BadUserRequestError('Bạn không có quyền truy cập');
-        const token = user;
+        // Kiểm tra token từ cookie trước
+        let token = req.cookies.token;
+
+        // Nếu không có token trong cookie, kiểm tra Authorization header
+        if (!token) {
+            const authHeader = req.headers.authorization;
+            if (authHeader && authHeader.startsWith('Bearer ')) {
+                token = authHeader.substring(7); // Bỏ "Bearer " prefix
+            }
+        }
+
+        if (!token) throw new BadUserRequestError('Bạn không có quyền truy cập');
+
         const decoded = await verifyToken(token);
         const { id } = decoded;
         const findUser = await modelUser.findOne({ where: { id } });

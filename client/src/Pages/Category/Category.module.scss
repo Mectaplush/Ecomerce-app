@@ -19,7 +19,107 @@
 }
 
 .filter-section {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+
+    h4 {
+        color: #262626;
+        font-size: 15px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #f0f0f0;
+        position: relative;
+
+        &::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, #1890ff, #40a9ff);
+            border-radius: 1px;
+        }
+    }
+}
+
+.filter-card {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e8e8e8;
+    margin-bottom: 20px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+
+    &:hover {
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        border-color: #d9d9d9;
+    }
+
+    :global(.ant-card-head) {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #e8e8e8;
+        padding: 0 20px;
+        min-height: 50px;
+
+        :global(.ant-card-head-title) {
+            color: #2c3e50;
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            padding: 12px 0;
+        }
+    }
+
+    :global(.ant-card-body) {
+        padding: 16px 20px;
+        background: #fff;
+    }
+}
+
+.search-input {
+    :global(.ant-input-search) {
+        :global(.ant-input-search-button) {
+            border-radius: 0 8px 8px 0;
+            border: 2px solid #1890ff;
+            background: linear-gradient(135deg, #1890ff, #40a9ff);
+
+            &:hover {
+                background: linear-gradient(135deg, #40a9ff, #1890ff);
+            }
+        }
+    }
+}
+
+.sort-select {
+    :global(.ant-select) {
+        :global(.ant-select-selector) {
+            border-radius: 8px;
+            border: 2px solid #f0f0f0 !important;
+            padding: 8px 12px;
+            height: auto !important;
+            transition: all 0.3s ease;
+
+            &:hover {
+                border-color: #d9d9d9 !important;
+            }
+        }
+
+        &:global(.ant-select-focused .ant-select-selector) {
+            border-color: #40a9ff !important;
+            box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+        }
+
+        :global(.ant-select-selection-item) {
+            color: #262626;
+            font-weight: 500;
+        }
+
+        :global(.ant-select-arrow) {
+            color: #8c8c8c;
+        }
+    }
 }
 
 .loading {
@@ -27,6 +127,16 @@
     justify-content: center;
     align-items: center;
     min-height: 400px;
+
+    :global(.ant-spin) {
+        .ant-spin-dot {
+            font-size: 24px;
+
+            .ant-spin-dot-item {
+                background-color: #1890ff;
+            }
+        }
+    }
 }
 
 // Tablet (768px - 991px)
@@ -37,11 +147,67 @@
     }
 
     .filter-section {
-        margin-bottom: 12px;
+        margin-bottom: 16px;
 
         h4 {
             font-size: 14px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+
+            &::after {
+                width: 30px;
+            }
+        }
+    }
+
+    .filter-card {
+        border-radius: 8px;
+        margin-bottom: 16px;
+
+        :global(.ant-card-head) {
+            padding: 0 16px;
+            min-height: 45px;
+
+            .ant-card-head-title {
+                font-size: 16px;
+                padding: 10px 0;
+
+                &::before {
+                    font-size: 16px;
+                    margin-right: 6px;
+                }
+            }
+        }
+
+        :global(.ant-card-body) {
+            padding: 14px 16px;
+        }
+    }
+
+    .search-input {
+        :global(.ant-input-search) {
+            .ant-input {
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+        }
+    }
+
+    .price-slider {
+        margin: 12px 0;
+
+        :global(.ant-slider) {
+            .ant-slider-handle {
+                width: 16px;
+                height: 16px;
+            }
+        }
+    }
+
+    .sort-select {
+        :global(.ant-select) {
+            .ant-select-selector {
+                padding: 6px 10px;
+            }
         }
     }
 
@@ -123,12 +289,81 @@
     }
 
     .filter-section {
-        margin-bottom: 10px;
+        margin-bottom: 14px;
 
         h4 {
             font-size: 13px;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             font-weight: 600;
+
+            &::after {
+                width: 25px;
+                height: 1.5px;
+            }
+        }
+    }
+
+    .filter-card {
+        border-radius: 6px;
+        margin-bottom: 12px;
+
+        :global(.ant-card-head) {
+            padding: 0 12px;
+            min-height: 40px;
+
+            .ant-card-head-title {
+                font-size: 15px;
+                padding: 8px 0;
+
+                &::before {
+                    font-size: 14px;
+                    margin-right: 4px;
+                }
+            }
+        }
+
+        :global(.ant-card-body) {
+            padding: 12px;
+        }
+    }
+
+    .search-input {
+        :global(.ant-input-search) {
+            .ant-input {
+                padding: 6px 10px;
+                font-size: 12px;
+                border-radius: 6px;
+            }
+
+            .ant-input-search-button {
+                border-radius: 0 6px 6px 0;
+            }
+        }
+    }
+
+    .price-slider {
+        margin: 10px 0;
+
+        :global(.ant-slider) {
+            .ant-slider-rail,
+            .ant-slider-track {
+                height: 4px;
+            }
+
+            .ant-slider-handle {
+                width: 14px;
+                height: 14px;
+                border-width: 2px;
+            }
+        }
+    }
+
+    .sort-select {
+        :global(.ant-select) {
+            .ant-select-selector {
+                padding: 4px 8px;
+                border-radius: 6px;
+            }
         }
     }
 
@@ -274,11 +509,82 @@
     }
 
     .filter-section {
-        margin-bottom: 8px;
+        margin-bottom: 12px;
 
         h4 {
             font-size: 12px;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+
+            &::after {
+                width: 20px;
+                height: 1px;
+            }
+        }
+    }
+
+    .filter-card {
+        border-radius: 4px;
+        margin-bottom: 10px;
+
+        :global(.ant-card-head) {
+            padding: 0 10px;
+            min-height: 35px;
+
+            .ant-card-head-title {
+                font-size: 14px;
+                padding: 6px 0;
+
+                &::before {
+                    font-size: 12px;
+                    margin-right: 4px;
+                }
+            }
+        }
+
+        :global(.ant-card-body) {
+            padding: 8px 10px;
+        }
+    }
+
+    .search-input {
+        :global(.ant-input-search) {
+            .ant-input {
+                padding: 4px 8px;
+                font-size: 11px;
+                border-radius: 4px;
+            }
+
+            .ant-input-search-button {
+                border-radius: 0 4px 4px 0;
+                padding: 4px 6px;
+            }
+        }
+    }
+
+    .price-slider {
+        margin: 8px 0;
+
+        :global(.ant-slider) {
+            .ant-slider-rail,
+            .ant-slider-track {
+                height: 3px;
+            }
+
+            .ant-slider-handle {
+                width: 12px;
+                height: 12px;
+                border-width: 2px;
+            }
+        }
+    }
+
+    .sort-select {
+        :global(.ant-select) {
+            .ant-select-selector {
+                padding: 2px 6px;
+                border-radius: 4px;
+                min-height: 24px;
+            }
         }
     }
 
