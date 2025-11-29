@@ -1,0 +1,30 @@
+.manager-order {
+    padding: 20px;
+
+    h1 {
+        margin-bottom: 24px;
+        font-size: 18px;
+        font-weight: bold;
+    }
+}
+
+.rating-container {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    .product-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 8px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #f0f0f0;
+
+        img {
+            border-radius: 4px;
+            object-fit: cover;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+    }
+}

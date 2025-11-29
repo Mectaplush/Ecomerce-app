@@ -1,0 +1,63 @@
+.info-card {
+    width: 100%;
+    height: 100%;
+
+    :global(.ant-card-head-title) {
+        font-size: 20px;
+        font-weight: 600;
+    }
+}
+
+.form {
+    width: 100%;
+    padding: 20px 0;
+
+    .form-row {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 8px;
+
+        .form-item {
+            flex: 1;
+
+            :global(.ant-form-item-label) {
+                label {
+                    font-weight: 500;
+                }
+            }
+
+            :global(.ant-input),
+            :global(.ant-select-selector) {
+                border-radius: 6px;
+                height: 40px;
+                display: flex;
+                align-items: center;
+            }
+
+            :global(.ant-select-selector) {
+                width: 100%;
+            }
+        }
+    }
+
+    .submit-button {
+        margin-top: 24px;
+
+        :global(.ant-btn) {
+            height: 40px;
+            min-width: 120px;
+            font-weight: 500;
+            font-size: 16px;
+        }
+    }
+}
+
+// Responsive
+@media (max-width: 768px) {
+    .form {
+        .form-row {
+            flex-direction: column;
+            gap: 0;
+        }
+    }
+}

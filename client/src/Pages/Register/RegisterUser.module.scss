@@ -1,0 +1,87 @@
+.wrapper {
+    min-height: 100vh;
+}
+
+.inner {
+    width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.register-form {
+    background: rgba(255, 255, 255, 0.95);
+    padding: 32px;
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+
+    h2 {
+        text-align: center;
+        margin-bottom: 24px;
+        color: #333;
+        font-size: 24px;
+        font-weight: 600;
+    }
+
+    :global {
+        .ant-input-affix-wrapper {
+            border-radius: 8px;
+            border: 1px solid #e8e8e8;
+            transition: all 0.3s ease;
+
+            &:hover,
+            &:focus {
+                border-color: #764ba2;
+                box-shadow: 0 0 0 2px rgba(118, 75, 162, 0.1);
+            }
+        }
+
+        .ant-input-prefix {
+            color: #764ba2;
+        }
+
+        .ant-btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            border-radius: 8px;
+            height: 45px;
+            font-size: 16px;
+            font-weight: 500;
+            margin-top: 16px;
+            transition: all 0.3s ease;
+
+            &:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+            }
+        }
+
+        .ant-form-item-explain-error {
+            margin-top: 4px;
+            color: #ff4d4f;
+        }
+    }
+}
+
+.register-button {
+    width: 100%;
+}
+
+.form-footer {
+    margin-top: 16px;
+    text-align: center;
+
+    .login-text {
+        color: #666;
+    }
+
+    .login-link {
+        color: #764ba2;
+        font-weight: 500;
+        transition: all 0.3s ease;
+
+        &:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+    }
+}
