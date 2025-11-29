@@ -8,6 +8,48 @@
     }
 }
 
+.avatar-section {
+    padding: 20px 0;
+    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+
+    .avatar-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+
+        .avatar {
+            border: 3px solid #f0f0f0;
+            transition: all 0.3s ease;
+
+            &:hover {
+                border-color: #1890ff;
+            }
+        }
+
+        .avatar-actions {
+            display: flex;
+            gap: 8px;
+
+            :global(.ant-btn) {
+                border-radius: 6px;
+                font-weight: 500;
+            }
+        }
+    }
+
+    .avatar-hint {
+        margin: 8px 0 0 0;
+        color: #8c8c8c;
+        font-size: 12px;
+    }
+}
+
 .form {
     width: 100%;
     padding: 20px 0;

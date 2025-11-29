@@ -90,15 +90,17 @@
     padding: 15px;
     background: linear-gradient(90deg, #e23459, #c44069, #a04f7c, #6c6497, #3879b3, #0b8cca, #0190d0);
     border-radius: 10px;
-    margin: 20px 0;
+    margin: 20px 0 0 0;
 
     > div:first-child {
         text-align: center;
-        margin-bottom: 15px;
+        margin-bottom: 0;
 
         img {
-            max-width: 200px;
-            height: auto;
+            width: 25%;
+            max-width: 250px;
+            height: 45px;
+            object-fit: contain;
         }
     }
 }
@@ -128,36 +130,48 @@
     }
 }
 
+.category-header {
+    position: relative;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
 .category-item {
     background: url('https://pcmarket.vn/static/assets/2021/images/home-box-title.png') no-repeat;
     background-size: cover;
     color: white;
-    height: 60px;
+    height: 50px;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
     padding: 0 15px;
+    width: 30%;
 
     h2 {
         padding-left: 10px;
-        line-height: 60px;
+        line-height: 50px;
+        margin: 0;
+        font-size: 1.4rem;
     }
+}
 
-    button {
-        background: #fff;
-        color: #0090d0;
-        border: 1px solid #0090d0;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 15px;
-        transition: all 0.3s ease;
+.category-button {
+    background: #fff;
+    color: #0090d0;
+    border: 1px solid #0090d0;
+    padding: 8px 18px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    height: 50px;
+    display: flex;
+    align-items: center;
 
-        &:hover {
-            background: #0090d0;
-            color: #fff;
-        }
+    &:hover {
+        background: #0090d0;
+        color: #fff;
     }
 }
 
@@ -175,21 +189,23 @@
 
     .hot-sale {
         padding: 20px;
-        margin: 25px 0;
+        margin: 25px 0 0 0;
     }
 
     .category-item {
-        height: 65px;
+        height: 55px;
+        width: 35%;
 
         h2 {
-            font-size: 1.6rem;
-            line-height: 65px;
+            font-size: 1.5rem;
+            line-height: 55px;
         }
+    }
 
-        button {
-            padding: 12px 24px;
-            font-size: 16px;
-        }
+    .category-button {
+        padding: 10px 22px;
+        font-size: 15px;
+        height: 55px;
     }
 }
 
@@ -247,16 +263,16 @@
     }
 
     .hot-sale {
-        margin: 10px 0;
+        margin: 10px 0 0 0;
         padding: 8px;
 
         > div:first-child {
-            margin-bottom: 10px;
+            margin-bottom: 0;
 
             img {
-                width: 30% !important;
-                max-width: 120px !important;
-                height: 40px !important;
+                width: 35% !important;
+                max-width: 140px !important;
+                height: 38px !important;
             }
         }
     }
@@ -266,19 +282,21 @@
     }
 
     .category-item {
-        height: 50px;
+        height: 45px;
         padding: 0 10px;
+        width: 60%;
 
         h2 {
             font-size: 1.1rem;
-            line-height: 50px;
+            line-height: 45px;
             padding-left: 5px;
         }
+    }
 
-        button {
-            padding: 6px 12px;
-            font-size: 13px;
-        }
+    .category-button {
+        padding: 6px 12px;
+        font-size: 13px;
+        height: 45px;
     }
 
     .category-list {
@@ -339,13 +357,17 @@
     }
 
     .hot-sale {
-        margin: 5px 0;
+        margin: 5px 0 0 0;
         padding: 5px;
 
-        > div:first-child img {
-            width: 40% !important;
-            max-width: 100px !important;
-            height: 35px !important;
+        > div:first-child {
+            margin-bottom: 0;
+
+            img {
+                width: 45% !important;
+                max-width: 110px !important;
+                height: 32px !important;
+            }
         }
     }
 
@@ -354,19 +376,21 @@
     }
 
     .category-item {
-        height: 45px;
+        height: 40px;
         padding: 0 8px;
+        width: 80%;
 
         h2 {
-            font-size: 1rem;
-            line-height: 45px;
+            font-size: 0.95rem;
+            line-height: 40px;
             padding-left: 2px;
         }
+    }
 
-        button {
-            padding: 5px 10px;
-            font-size: 12px;
-        }
+    .category-button {
+        padding: 4px 8px;
+        font-size: 11px;
+        height: 40px;
     }
 
     .category-list {

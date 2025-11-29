@@ -7,5 +7,7 @@ const { asyncHandler } = require('../auth/checkAuth');
 
 router.post('/api/create-product-preview', authUser, asyncHandler(controllerProductPreview.createProductPreview));
 router.get('/api/get-product-preview-user', authUser, asyncHandler(controllerProductPreview.getProductPreviewUser));
+router.put('/api/update-product-preview', authUser, asyncHandler(controllerProductPreview.updateProductPreview));
+router.delete('/api/delete-product-preview', authUser, asyncHandler(controllerProductPreview.deleteProductPreview));
 
 module.exports = router;

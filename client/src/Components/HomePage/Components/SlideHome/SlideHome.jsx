@@ -31,11 +31,11 @@ function SlideHome() {
                 </SwiperSlide>
 
                 <SwiperSlide>
-                    <img src="https://pcmarket.vn/media/banner/30_Aug6324a66ccc6c6e8064276fb4f8d29b65.jpg" alt="" />
+                    <img src="/banner-1.jpg" alt="" />
                 </SwiperSlide>
 
                 <SwiperSlide>
-                    <img src="https://pcmarket.vn/media/banner/banner-top-pc-assassin_pcm.jpg" alt="" />
+                    <img src="/banner-2.jpg" alt="" />
                 </SwiperSlide>
             </Swiper>
         </div>

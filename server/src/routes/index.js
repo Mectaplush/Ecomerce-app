@@ -37,6 +37,8 @@ function routes(app) {
     app.post('/api/reset-password', userRoutes);
     app.post('/api/update-role-user', userRoutes);
     app.get('/api/users/pie-chart', userRoutes);
+    app.post('/api/upload-avatar', userRoutes);
+    app.delete('/api/delete-avatar', userRoutes);
 
     ///// product
     app.post('/api/create-product', productRoutes);
@@ -90,6 +92,8 @@ function routes(app) {
     //// product preview
     app.post('/api/create-product-preview', productPreviewRoutes);
     app.get('/api/get-product-preview-user', productPreviewRoutes);
+    app.put('/api/update-product-preview', productPreviewRoutes);
+    app.delete('/api/delete-product-preview', productPreviewRoutes);
 
     //// blogs
     app.post('/api/create-blog', blogsRoutes);

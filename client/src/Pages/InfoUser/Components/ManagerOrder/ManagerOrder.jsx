@@ -1,4 +1,18 @@
-import { Table, Tag, Space, Typography, Image, Button, Popconfirm, message, Modal, Rate, Input, Form } from 'antd';
+import {
+    Table,
+    Tag,
+    Space,
+    Typography,
+    Image,
+    Button,
+    Popconfirm,
+    message,
+    Modal,
+    Rate,
+    Input,
+    Form,
+    Select,
+} from 'antd';
 import styles from './ManagerOrder.module.scss';
 import classNames from 'classnames/bind';
 import { useEffect, useState } from 'react';
@@ -19,6 +33,8 @@ function ManagerOrder() {
     const [orders, setOrders] = useState([]);
     const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
     const [currentProduct, setCurrentProduct] = useState(null);
+    const [currentOrderProducts, setCurrentOrderProducts] = useState([]);
+    const [ratingTargetProductId, setRatingTargetProductId] = useState(null);
     const [form] = Form.useForm();
     const [productPreview, setProductPreview] = useState([]);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -61,8 +77,15 @@ function ManagerOrder() {
         }
     };
 
-    const showRatingModal = async (product) => {
-        setCurrentProduct(product);
+    const showRatingModal = async (products) => {
+        // products: array of items in order
+        setCurrentOrderProducts(products);
+        // preselect first unrated product if any, otherwise first
+        const previews = productPreview;
+        const unrated = products.find((p) => !previews.some((preview) => preview.productId === p.product.id));
+        const defaultTargetId = unrated ? unrated.product.id : products[0]?.product.id ?? null;
+        setRatingTargetProductId(defaultTargetId);
+        setCurrentProduct(unrated || products[0] || null);
         setIsRatingModalOpen(true);
         form.resetFields();
     };
@@ -70,8 +93,13 @@ function ManagerOrder() {
     const handleRatingOk = () => {
         form.validateFields().then(async (values) => {
             try {
+                const targetId = ratingTargetProductId || currentProduct?.product?.id;
+                if (!targetId) {
+                    message.error('Vui lòng chọn sản phẩm để đánh giá');
+                    return;
+                }
                 const data = {
-                    productId: currentProduct.product.id,
+                    productId: targetId,
                     rating: values.rating,
                     content: values.content,
                 };
@@ -79,6 +107,8 @@ function ManagerOrder() {
                 message.success('Đánh giá sản phẩm thành công');
                 setIsRatingModalOpen(false);
                 form.resetFields();
+                // refresh previews so next time shows correct unrated list
+                await fetchProductPreview();
             } catch (error) {
                 message.error('Không thể đánh giá sản phẩm');
             }
@@ -206,7 +236,7 @@ function ManagerOrder() {
             width: isMobile ? 70 : 100, // Tăng từ 90 lên 100
             render: (date) => (
                 <span style={{ fontSize: isMobile ? '10px' : '14px' }}>
-                    {dayjs(date).format(isMobile ? 'DD/MM' : 'DD/MM/YY')}
+                    {dayjs(date).format(isMobile ? 'DD/MM' : 'HH:mm DD/MM/YY')}
                 </span>
             ),
         },
@@ -298,9 +328,35 @@ function ManagerOrder() {
         {
             title: 'Thao tác',
             key: 'action',
-            width: isMobile ? 80 : 110, // Tăng từ 100 lên 110
+            width: isMobile ? 80 : 110,
             render: (_, record) => {
                 if (record.status.toLowerCase() === 'pending') {
+                    // Kiểm tra nếu là thanh toán online (MOMO/VNPAY) thì không cho hủy
+                    const isOnlinePayment = record.typePayment === 'MOMO' || record.typePayment === 'VNPAY';
+
+                    if (isOnlinePayment) {
+                        return (
+                            <Button
+                                type="primary"
+                                danger
+                                size="small"
+                                disabled
+                                style={{
+                                    fontSize: isMobile ? '9px' : '12px',
+                                    height: isMobile ? '24px' : '28px',
+                                    borderRadius: '4px',
+                                    fontWeight: '500',
+                                    padding: '0 8px',
+                                    opacity: 0.5,
+                                    cursor: 'not-allowed',
+                                }}
+                                title="Không thể hủy đơn hàng đã thanh toán online"
+                            >
+                                Hủy
+                            </Button>
+                        );
+                    }
+
                     return (
                         <Popconfirm
                             title="Hủy đơn hàng"
@@ -346,15 +402,11 @@ function ManagerOrder() {
                             </Tag>
                         );
                     } else {
-                        const unratedProduct = record.products.find(
-                            (product) => !productPreview.some((preview) => preview.productId === product.product.id),
-                        );
-
                         return (
                             <Button
                                 type="primary"
                                 size="small"
-                                onClick={() => showRatingModal(unratedProduct)}
+                                onClick={() => showRatingModal(record.products)}
                                 style={{
                                     fontSize: isMobile ? '9px' : '12px',
                                     height: isMobile ? '24px' : '28px',
@@ -421,33 +473,52 @@ function ManagerOrder() {
                 cancelText="Hủy"
                 width={isMobile ? '90%' : 500}
             >
-                {currentProduct && (
+                {isRatingModalOpen && (
                     <div className={cx('rating-container')}>
-                        <div className={cx('product-info')}>
-                            <Image
-                                src={currentProduct.images.split(',')[0]}
-                                width={isMobile ? 60 : 80}
-                                height={isMobile ? 60 : 80}
-                                style={{ objectFit: 'cover', borderRadius: '4px' }}
-                            />
-                            <div>
-                                <Text
-                                    strong
-                                    style={{
-                                        fontSize: isMobile ? '14px' : '16px',
-                                        display: 'block',
-                                        marginBottom: '4px',
-                                    }}
-                                >
-                                    {currentProduct.product.name}
-                                </Text>
-                                <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>
-                                    Số lượng: {currentProduct.quantity}
-                                </Text>
-                            </div>
-                        </div>
-
+                        {/* Product selector */}
                         <Form form={form} layout="vertical">
+                            <Form.Item label={<Text strong>Chọn sản phẩm</Text>} required>
+                                <Select
+                                    value={ratingTargetProductId}
+                                    onChange={(val) => {
+                                        setRatingTargetProductId(val);
+                                        const selected = currentOrderProducts.find((p) => p.product.id === val);
+                                        setCurrentProduct(selected || null);
+                                    }}
+                                    placeholder="Chọn sản phẩm để đánh giá"
+                                    options={currentOrderProducts.map((p) => ({
+                                        label: p.product.name,
+                                        value: p.product.id,
+                                    }))}
+                                />
+                            </Form.Item>
+
+                            {currentProduct && (
+                                <div className={cx('product-info')}>
+                                    <Image
+                                        src={currentProduct.images.split(',')[0]}
+                                        width={isMobile ? 60 : 80}
+                                        height={isMobile ? 60 : 80}
+                                        style={{ objectFit: 'cover', borderRadius: '4px' }}
+                                    />
+                                    <div>
+                                        <Text
+                                            strong
+                                            style={{
+                                                fontSize: isMobile ? '14px' : '16px',
+                                                display: 'block',
+                                                marginBottom: '4px',
+                                            }}
+                                        >
+                                            {currentProduct.product.name}
+                                        </Text>
+                                        <Text type="secondary" style={{ fontSize: isMobile ? '12px' : '14px' }}>
+                                            Số lượng: {currentProduct.quantity}
+                                        </Text>
+                                    </div>
+                                </div>
+                            )}
+
                             <Form.Item
                                 name="rating"
                                 label={<Text strong>Đánh giá sao</Text>}

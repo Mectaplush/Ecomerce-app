@@ -203,6 +203,7 @@
                 box-shadow: 0 8px 24px rgba(240, 147, 251, 0.3) !important;
                 position: relative !important;
                 overflow: hidden !important;
+                margin-bottom: 10px !important;
 
                 &::before {
                     content: '';
@@ -284,7 +285,7 @@
             &::before {
                 content: '';
                 position: absolute;
-                top: 50%;
+                top: 0;
                 left: 0;
                 right: 0;
                 height: 1px;
@@ -295,15 +296,21 @@
             &::after {
                 content: 'Đăng nhập với Google';
                 position: absolute;
-                top: 50%;
+                top: -12px; // di chuyển label lên trên
                 left: 50%;
                 transform: translate(-50%, -50%);
                 background: rgba(255, 255, 255, 0.98);
-                padding: 0 20px;
+                padding: 0 12px;
                 color: #718096;
-                font-size: 14px;
+                font-size: 13px;
                 font-weight: 500;
                 z-index: 2;
+                white-space: nowrap; // tránh xuống dòng
+            }
+
+            // vùng chứa nút Google
+            > div {
+                margin-top: 16px !important; // khoảng cách với divider
             }
         }
     }
@@ -316,47 +323,13 @@
         margin-top: 32px;
         padding-top: 20px;
         border-top: 1px solid #e2e8f0;
+        position: relative;
+        z-index: 5; // cao hơn nút Google
+        overflow: visible;
 
-        .forgot-password {
-            color: #f093fb !important;
-            font-size: 15px !important;
-            font-weight: 500 !important;
-            transition: all 0.3s ease !important;
-            text-decoration: none !important;
-
-            &:hover {
-                color: #e879f9 !important;
-                text-decoration: underline !important;
-            }
-        }
-
-        .register-text {
-            color: #4a5568 !important;
-            font-size: 15px !important;
-            font-weight: 400 !important;
-            white-space: nowrap !important; // Thêm để không xuống hàng
-        }
-
+        .register-text,
         .register-link {
-            color: #f093fb !important;
-            font-weight: 600 !important;
-            text-decoration: none !important;
-            transition: all 0.3s ease !important;
-            white-space: nowrap !important; // Thêm để không xuống hàng
-
-            &:hover {
-                color: #e879f9 !important;
-                text-decoration: underline !important;
-            }
-        }
-
-        // Sửa responsive cho mobile
-        :global(.ant-row) {
-            flex-wrap: nowrap !important; // Không cho wrap
-
-            .ant-col {
-                flex-shrink: 1 !important; // Cho phép shrink
-            }
+            white-space: nowrap; // giữ cùng một dòng trên màn hình vừa
         }
     }
 

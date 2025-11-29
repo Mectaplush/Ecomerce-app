@@ -499,10 +499,17 @@ class controllerProducts {
             dataPreview.map(async (item) => {
                 const user = await modelUser.findOne({ where: { id: item.userId } });
                 return {
-                    ...item,
+                    id: item.id,
+                    productId: item.productId,
+                    userId: item.userId,
+                    rating: item.rating,
+                    content: item.content,
+                    createdAt: item.createdAt,
+                    updatedAt: item.updatedAt,
                     user: {
                         id: user.id,
                         name: user.fullName,
+                        avatar: user.avatar,
                     },
                 };
             }),
