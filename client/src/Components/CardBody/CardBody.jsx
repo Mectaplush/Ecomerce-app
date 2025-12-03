@@ -8,6 +8,7 @@ import { requestAddToCart } from '../../config/request';
 
 import { message } from 'antd';
 import { useRef, useState, useEffect } from 'react';
+import { useStore } from '../../hooks/useStore';
 import { useFloating, autoUpdate, offset, flip, shift, arrow, inline } from '@floating-ui/react-dom';
 
 const cx = classNames.bind(styles);
@@ -16,6 +17,7 @@ function CardBody({ product }) {
     const [isHovering, setIsHovering] = useState(false);
     const arrowRef = useRef(null);
     const cardRef = useRef(null);
+    const { fetchCart } = useStore();
 
     // Floating UI setup
     const { x, y, strategy, refs, middlewareData, placement } = useFloating({
@@ -46,6 +48,7 @@ function CardBody({ product }) {
         };
         try {
             await requestAddToCart(data);
+            await fetchCart();
             message.success('Thêm vào giỏ hàng thành công');
         } catch (error) {
             message.error(error.response.data.message);

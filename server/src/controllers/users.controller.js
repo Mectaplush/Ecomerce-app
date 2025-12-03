@@ -142,6 +142,7 @@ class controllerUser {
         };
 
         const auth = CryptoJS.AES.encrypt(JSON.stringify(userInfo), process.env.SECRET_CRYPTO).toString();
+        console.log('Auth user:', auth);
 
         new OK({ message: 'success', metadata: auth }).send(res);
     }

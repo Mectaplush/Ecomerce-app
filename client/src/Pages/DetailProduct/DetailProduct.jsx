@@ -64,7 +64,7 @@ function DetailProduct() {
         };
         try {
             await requestAddToCart(data);
-            fetchCart();
+            await fetchCart();
             message.success('Thêm vào giỏ hàng thành công');
         } catch (error) {
             message.error(error.response.data.message);

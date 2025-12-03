@@ -22,8 +22,8 @@ connectDB();
 syncDatabase();
 
 app.post('/api/chat', async (req, res) => {
-    const { question } = req.body;
-    const data = await askQuestion(question);
+    const { question, images } = req.body;
+    const data = await askQuestion(question, images);
     return res.status(200).json(data);
 });
 
@@ -33,12 +33,12 @@ app.use(express.static(path.join(__dirname, '../src')));
 
 app.use((err, req, res, next) => {
     const statusCode = err.statusCode || 500;
-    
+
     // Log the error
     console.error('Error occurred:', err.message);
     console.error('Stack trace:', err.stack);
     console.error('Request:', req.method, req.url);
-    
+
     res.status(statusCode).json({
         success: false,
         message: err.message || 'Lỗi server',

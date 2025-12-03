@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import styles from './Chatbot.module.scss';
 import { requestChatbot, requestGetChatbot } from '../../config/request';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faComments, faTimes } from '@fortawesome/free-solid-svg-icons';
+import { faComments, faTimes, faPaperclip, faImage, faTrash } from '@fortawesome/free-solid-svg-icons';
 
 const Chatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +12,9 @@ const Chatbot = () => {
     ]);
     const [inputMessage, setInputMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedImages, setSelectedImages] = useState([]);
     const messagesEndRef = useRef(null);
+    const fileInputRef = useRef(null);
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -34,17 +37,73 @@ const Chatbot = () => {
         loadChatbotData();
     }, []);
 
+    const handleImageUpload = (e) => {
+        const files = Array.from(e.target.files);
+        const imageFiles = files.filter(file => file.type.startsWith('image/'));
+        
+        if (imageFiles.length > 0) {
+            const newImages = imageFiles.map(file => ({
+                file,
+                preview: URL.createObjectURL(file),
+                id: Date.now() + Math.random()
+            }));
+            setSelectedImages(prev => [...prev, ...newImages]);
+        }
+    };
+
+    const removeImage = (imageId) => {
+        setSelectedImages(prev => {
+            const imageToRemove = prev.find(img => img.id === imageId);
+            if (imageToRemove) {
+                URL.revokeObjectURL(imageToRemove.preview);
+            }
+            return prev.filter(img => img.id !== imageId);
+        });
+    };
+
+    const convertImageToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (inputMessage.trim() && !isLoading) {
+        if ((inputMessage.trim() || selectedImages.length > 0) && !isLoading) {
             const userMessage = inputMessage.trim();
-            setMessages((prev) => [...prev, { content: userMessage, sender: 'user' }]);
+            const hasImages = selectedImages.length > 0;
+            
+            // Add user message with images to chat
+            setMessages((prev) => [...prev, { 
+                content: userMessage || 'Đã gửi hình ảnh', 
+                sender: 'user',
+                images: hasImages ? selectedImages.map(img => img.preview) : null
+            }]);
+            
             setInputMessage('');
             setIsLoading(true);
 
             try {
-                const response = await requestChatbot({ question: userMessage });
+                // Convert images to base64 if any
+                let imageData = null;
+                if (hasImages) {
+                    imageData = await Promise.all(
+                        selectedImages.map(img => convertImageToBase64(img.file))
+                    );
+                }
+
+                const response = await requestChatbot({ 
+                    question: userMessage,
+                    images: imageData
+                });
                 setMessages((prev) => [...prev, { content: response.metadata, sender: 'bot' }]);
+                
+                // Clear selected images after sending
+                selectedImages.forEach(img => URL.revokeObjectURL(img.preview));
+                setSelectedImages([]);
             } catch (error) {
                 setMessages((prev) => [
                     ...prev,
@@ -81,7 +140,46 @@ const Chatbot = () => {
                                     message.sender === 'user' ? styles.userMessage : styles.botMessage
                                 }`}
                             >
-                                <div className={styles.messageContent}>{message.content}</div>
+                                <div className={styles.messageContent}>
+                                    {message.sender === 'bot' ? (
+                                        <div className={styles.markdownContent}>
+                                            <ReactMarkdown 
+                                                components={{
+                                                    // Custom components for better styling
+                                                    p: ({ children }) => <p className={styles.markdownParagraph}>{children}</p>,
+                                                    ul: ({ children }) => <ul className={styles.markdownList}>{children}</ul>,
+                                                    ol: ({ children }) => <ol className={styles.markdownOrderedList}>{children}</ol>,
+                                                    li: ({ children }) => <li className={styles.markdownListItem}>{children}</li>,
+                                                    strong: ({ children }) => <strong className={styles.markdownBold}>{children}</strong>,
+                                                    em: ({ children }) => <em className={styles.markdownItalic}>{children}</em>,
+                                                    code: ({ children, inline }) => 
+                                                        inline ? 
+                                                            <code className={styles.markdownInlineCode}>{children}</code> : 
+                                                            <code className={styles.markdownCodeBlock}>{children}</code>,
+                                                    h1: ({ children }) => <h1 className={styles.markdownH1}>{children}</h1>,
+                                                    h2: ({ children }) => <h2 className={styles.markdownH2}>{children}</h2>,
+                                                    h3: ({ children }) => <h3 className={styles.markdownH3}>{children}</h3>,
+                                                }}
+                                            >
+                                                {message.content}
+                                            </ReactMarkdown>
+                                        </div>
+                                    ) : (
+                                        message.content
+                                    )}
+                                    {message.images && (
+                                        <div className={styles.messageImages}>
+                                            {message.images.map((image, imgIndex) => (
+                                                <img
+                                                    key={imgIndex}
+                                                    src={image}
+                                                    alt={`Uploaded ${imgIndex + 1}`}
+                                                    className={styles.messageImage}
+                                                />
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         ))}
                         {isLoading && (
@@ -94,17 +192,64 @@ const Chatbot = () => {
                         <div ref={messagesEndRef} />
                     </div>
                     <form onSubmit={handleSubmit} className={styles.inputForm}>
-                        <input
-                            type="text"
-                            value={inputMessage}
-                            onChange={(e) => setInputMessage(e.target.value)}
-                            placeholder="Nhập tin nhắn của bạn..."
-                            className={styles.input}
-                            disabled={isLoading}
-                        />
-                        <button type="submit" className={styles.sendButton} disabled={isLoading}>
-                            Gửi
-                        </button>
+                        {selectedImages.length > 0 && (
+                            <div className={styles.imagePreview}>
+                                <div className={styles.previewContainer}>
+                                    {selectedImages.map((image) => (
+                                        <div key={image.id} className={styles.previewItem}>
+                                            <img src={image.preview} alt="Preview" className={styles.previewImage} />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeImage(image.id)}
+                                                className={styles.removeImageButton}
+                                                title="Xóa hình ảnh"
+                                            >
+                                                <FontAwesomeIcon icon={faTrash} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                {selectedImages.length > 3 && (
+                                    <div className={styles.imageCount}>
+                                        +{selectedImages.length - 3} ảnh khác
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        <div className={styles.inputRow}>
+                            <input
+                                type="text"
+                                value={inputMessage}
+                                onChange={(e) => setInputMessage(e.target.value)}
+                                placeholder="Nhập tin nhắn của bạn..."
+                                className={styles.input}
+                                disabled={isLoading}
+                            />
+                            <input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleImageUpload}
+                                accept="image/*"
+                                multiple
+                                className={styles.hiddenFileInput}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className={styles.attachButton}
+                                disabled={isLoading}
+                                title="Đính kèm hình ảnh"
+                            >
+                                <FontAwesomeIcon icon={faImage} />
+                            </button>
+                            <button 
+                                type="submit" 
+                                className={styles.sendButton} 
+                                disabled={isLoading || (inputMessage.trim() === '' && selectedImages.length === 0)}
+                            >
+                                Gửi
+                            </button>
+                        </div>
                     </form>
                 </div>
             )}

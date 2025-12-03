@@ -1,10 +1,16 @@
 import axios from 'axios';
 import cookies from 'js-cookie';
+
 const request = axios.create({
-    baseURL: 'http://localhost:3000',
+    baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3000',
     withCredentials: true,
 });
 
+request.interceptors.request.use((config) => {
+    const token = localStorage.getItem('accessToken');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+});
 export const requestGetProductSearchByCategory = async (params) => {
     const res = await request.get('/api/get-product-search-by-category', { params });
     return res.data;
@@ -383,6 +389,11 @@ export const requestGetBlogById = async (id) => {
 
 export const insertProductsByCsv = async(body) => {
     return (await request.post('/api/insert-products-by-csv', body))
+}
+
+export const reEmbedAllProducts = async() => {
+    const res = await request.post('/api/re-embed-all-products');
+    return res.data;
 }
 
 let isRefreshing = false;

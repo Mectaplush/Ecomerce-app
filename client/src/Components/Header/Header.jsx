@@ -7,7 +7,16 @@ import { requestGetCategory, requestGetProductSearch, requestLogout } from '../.
 import { Link, useNavigate } from 'react-router-dom';
 import { useStore } from '../../hooks/useStore';
 import { Avatar, Dropdown } from 'antd';
-import { UserOutlined, ShoppingOutlined, LogoutOutlined, WindowsOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+    UserOutlined,
+    ShoppingOutlined,
+    LogoutOutlined,
+    WindowsOutlined,
+    SearchOutlined,
+    DesktopOutlined,
+    LaptopOutlined,
+    MenuOutlined,
+} from '@ant-design/icons';
 
 import useDebounce from '../../hooks/useDebounce';
 
@@ -15,6 +24,7 @@ const cx = classNames.bind(styles);
 
 function Header() {
     const [category, setCategory] = useState([]);
+    const [menuOpen, setMenuOpen] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -59,6 +69,8 @@ function Header() {
     const [search, setSearch] = useState('');
 
     const debounceSearch = useDebounce(search, 500);
+    const totalQuantity = dataCart.reduce((sum, item) => sum + item.quantity, 0);
+
     const [productSearch, setProductSearch] = useState([]);
 
     useEffect(() => {
@@ -101,6 +113,15 @@ function Header() {
                         <img src="https://pcmarket.vn/static/assets/2021/images/logo-new.png" alt="" />
                     </div>
                 </Link>
+
+                {/* Nút menu cho mobile */}
+                <button
+                    className={cx('menu-toggle')}
+                    onClick={() => setMenuOpen(!menuOpen)}
+                    style={{ display: window.innerWidth <= 600 ? 'block' : 'none', background: 'none', border: 'none' }}
+                >
+                    <MenuOutlined style={{ fontSize: 28, color: '#fff' }} />
+                </button>
 
                 <div className={cx('search-container')}>
                     <select name="" id="" onChange={(e) => setSelectedCategory(e.target.value)}>
@@ -177,7 +198,7 @@ function Header() {
 
                             <Link to="/cart" className={cx('cart-button')}>
                                 <ShoppingOutlined style={{ fontSize: '24px' }} />
-                                Giỏ hàng ({dataCart.length})
+                                Giỏ hàng ({totalQuantity})
                             </Link>
                         </div>
                         <Dropdown menu={{ items }} placement="bottomRight" arrow>
@@ -202,16 +223,20 @@ function Header() {
                     </div>
                 )}
             </div>
-            <div className={cx('category-list')}>
-                {category.map((item) => (
-                    <Link key={item.id} to={`/category/${item.id}`}>
-                        <div className={cx('category-item')}>
-                            <img src={item.image} alt="" />
-                            <span>{item.name}</span>
-                        </div>
-                    </Link>
-                ))}
-            </div>
+
+            {/* Hiển thị category-list khi menuOpen hoặc ở desktop */}
+            {(menuOpen || window.innerWidth > 600) && (
+                <div className={cx('category-list')}>
+                    {category.map((item) => (
+                        <Link key={item.id} to={`/category/${item.id}`}>
+                            <div className={cx('category-item')}>
+                                <img src={item.image} alt="" />
+                                <span>{item.name}</span>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

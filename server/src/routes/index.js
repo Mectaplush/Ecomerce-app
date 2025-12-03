@@ -57,6 +57,7 @@ function routes(app) {
     app.get('/api/get-product-search', productRoutes);
     app.get('/api/get-product-search-by-category', productRoutes);
     app.post('/api/insert-products-by-csv', productRoutes);
+    app.post('/api/re-embed-all-products', productRoutes)
 
     //// category
     app.post('/api/create-category', categoryRoutes);

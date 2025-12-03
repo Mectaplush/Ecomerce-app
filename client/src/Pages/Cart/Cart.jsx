@@ -33,10 +33,10 @@ function Cart() {
                 cartId: id,
             };
             await requestDeleteCart(data);
-            fetchCart();
+            await fetchCart();
             message.success('Xoá sản phẩm trong giỏ hàng thành công');
         } catch (error) {
-            message.error(error.response.data.message);
+            message.error(error.response?.data?.message || 'Xoá sản phẩm trong giỏ hàng thất bại');
         }
     };
 
@@ -52,7 +52,7 @@ function Cart() {
                 return;
             }
             await requestUpdateQuantityCart(data);
-            await fetchData();
+            await fetchCart();
         } catch (error) {
             message.error(error.response.data.message);
         }

@@ -1,11 +1,11 @@
-const Groq = require('groq-sdk');
+const { OpenAI } = require('openai');
 const embeddingService = require('../services/embeddingService');
 require('dotenv').config();
 
-const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
 class RAGChatbot {
-    async askQuestion(question) {
+    async askQuestion(question, imagesData) {
         try {
             // Search for relevant products using RAG
             const searchResults = await embeddingService.search(question, {
@@ -13,6 +13,22 @@ class RAGChatbot {
                 includeMetadata: true,
                 threshold: 0.6
             });
+
+            // Process images and get descriptions
+            let imageDescriptions = '';
+            if (imagesData && imagesData.length > 0) {
+                const descriptions = [];
+                for (let i = 0; i < imagesData.length; i++) {
+                    try {
+                        const description = await embeddingService.generateImageDescription(imagesData[i]);
+                        descriptions.push(`Hình ảnh ${i + 1}: ${description}`);
+                    } catch (error) {
+                        console.error(`Error processing image ${i + 1}:`, error);
+                        descriptions.push(`Hình ảnh ${i + 1}: Không thể xử lý hình ảnh này`);
+                    }
+                }
+                imageDescriptions = `\nHình ảnh khách hàng gửi:\n${descriptions.join('\n')}`;
+            }
 
             // Build context from search results
             const context = this.buildContext(searchResults);
@@ -22,23 +38,25 @@ Bạn là một trợ lý bán hàng chuyên nghiệp của cửa hàng máy tí
 
 Thông tin sản phẩm liên quan:
 ${context}
+${imageDescriptions}
 
 Câu hỏi của khách hàng: ${question}
 
 Hướng dẫn trả lời:
 - Trả lời dựa trên thông tin sản phẩm được cung cấp
+- Nếu có hình ảnh, hãy phân tích và so sánh với sản phẩm có sẵn
 - Nếu có sản phẩm phù hợp, hãy giới thiệu cụ thể với tên và giá
 - Nếu không có thông tin, hãy lịch sự nói rằng cần kiểm tra thêm
 - Trả lời một cách tự nhiên và thân thiện
 - Không bịa đặt thông tin không có trong dữ liệu
             `;
 
-            const completion = await groq.chat.completions.create({
-                model: 'llama-3.3-70b-versatile',
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
                 messages: [
-                    { 
-                        role: 'system', 
-                        content: 'Bạn là trợ lý bán hàng chuyên nghiệp. Chỉ sử dụng thông tin được cung cấp để trả lời.' 
+                    {
+                        role: 'system',
+                        content: 'Bạn là trợ lý bán hàng chuyên nghiệp. Chỉ sử dụng thông tin được cung cấp để trả lời.'
                     },
                     { role: 'user', content: prompt },
                 ],
@@ -47,7 +65,7 @@ Hướng dẫn trả lời:
             });
 
             const answer = completion.choices[0].message.content;
-            
+
             return {
                 answer,
                 sources: searchResults.slice(0, 5), // Return top 5 relevant products
@@ -74,12 +92,12 @@ Hướng dẫn trả lời:
 
         for (const result of searchResults) {
             const { metadata, score } = result;
-            
+
             // Avoid duplicate products
             if (metadata.productId && seenProducts.has(metadata.productId)) {
                 continue;
             }
-            
+
             if (metadata.productId) {
                 seenProducts.add(metadata.productId);
             }
@@ -87,7 +105,7 @@ Hướng dẫn trả lời:
             if (result.type === 'text') {
                 context += `\nSản phẩm: ${metadata.name}`;
                 if (metadata.price) {
-                    const finalPrice = metadata.discount > 0 
+                    const finalPrice = metadata.discount > 0
                         ? metadata.price - (metadata.price * metadata.discount / 100)
                         : metadata.price;
                     context += ` - Giá: ${finalPrice.toLocaleString()} VND`;
@@ -148,8 +166,8 @@ Tiêu chí đánh giá:
 Trả lời CHÍNH XÁC 1 trong 2 từ: "interested" hoặc "spam"
 `;
 
-            const completion = await groq.chat.completions.create({
-                model: 'llama-3.3-70b-versatile',
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
                 messages: [
                     {
                         role: 'system',
@@ -196,7 +214,7 @@ Trả lời CHÍNH XÁC 1 trong 2 từ: "interested" hoặc "spam"
 
             for (const result of searchResults) {
                 if (recommendations.length >= limit) break;
-                
+
                 const { metadata } = result;
                 if (metadata.productId && !seenProducts.has(metadata.productId)) {
                     seenProducts.add(metadata.productId);
@@ -218,13 +236,11 @@ Trả lời CHÍNH XÁC 1 trong 2 từ: "interested" hoặc "spam"
     }
 }
 
-// Create singleton instance
 const ragChatbot = new RAGChatbot();
 
-// Export functions for backward compatibility
-async function askQuestion(question) {
-    const result = await ragChatbot.askQuestion(question);
-    return result.answer; // Return just the answer for compatibility
+async function askQuestion(question, images) {
+    const result = await ragChatbot.askQuestion(question, images);
+    return result.answer;
 }
 
 async function analyzeConversation(messages) {
@@ -232,8 +248,8 @@ async function analyzeConversation(messages) {
 }
 
 // Export both old interface and new class
-module.exports = { 
-    askQuestion, 
+module.exports = {
+    askQuestion,
     analyzeConversation,
     RAGChatbot: ragChatbot
 };

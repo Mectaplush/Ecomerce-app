@@ -36,4 +36,8 @@ router.get('/api/get-product-search-by-category', asyncHandler(controllerProduct
 
 router.post('/api/insert-products-by-csv', asyncHandler(controllerProducts.insertProductsByCsv));
 
+router.post('/api/re-embed-all-products', authAdmin, asyncHandler(controllerProducts.reEmbedAllProducts));
+
+router.post('/api/generate-product-data-from-images', authAdmin, asyncHandler(controllerProducts.generateProductDataFromImages))
+
 module.exports = router;

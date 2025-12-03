@@ -199,3 +199,68 @@
     color: #fff;
     text-decoration: none;
 }
+
+@media (max-width: 900px) {
+    .inner {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 8px 0;
+    }
+    .search-container {
+        width: 100%;
+        margin-top: 8px;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .auth-buttons,
+    .user-menu,
+    .cart-menu {
+        width: 100%;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
+    .category-list {
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 600px) {
+    .wrapper {
+        height: auto;
+        padding-bottom: 8px;
+    }
+    .inner {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 8px 0;
+    }
+    .search-container {
+        flex-direction: column;
+        width: 100%;
+        input {
+            width: 100%;
+        }
+    }
+    .category-list {
+        display: none; // Ẩn danh mục ở mobile, có thể dùng menu riêng
+    }
+    .cart-menu {
+        justify-content: flex-end;
+    }
+}
+
+.menu-toggle {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-left: auto;
+    margin-right: 8px;
+}
+@media (max-width: 600px) {
+    .menu-toggle {
+        display: block;
+    }
+}

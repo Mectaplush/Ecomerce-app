@@ -9,9 +9,9 @@ class ChatbotController {
         // TODO: handle case where id == undefined
         // console.log(req);
         const { id } = req.user;
-        const { question } = req.body;
+        const { question, images } = req.body;
 
-        const response = await askQuestion(question);
+        const response = await askQuestion(question, images);
 
         // Tìm hoặc tạo conversation cho user này
         let conversation = await chatbotConversationModel.findOne({

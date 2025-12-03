@@ -15,6 +15,7 @@ import {
     requestUpdateProduct,
     requestDeleteProduct,
     insertProductsByCsv,
+    reEmbedAllProducts,
 } from '../../../../config/request';
 
 const cx = classNames.bind(styles);
@@ -61,6 +62,10 @@ function ManagerProduct() {
     const [csvUploading, setCsvUploading] = useState(false);
     const [csvErrors, setCsvErrors] = useState([]); // Add state for errors
     const [csvSuccess, setCsvSuccess] = useState(''); // Add state for success message
+    const [reEmbedLoading, setReEmbedLoading] = useState(false);
+    const [reEmbedModalOpen, setReEmbedModalOpen] = useState(false);
+    const [reEmbedError, setReEmbedError] = useState('');
+    const [reEmbedSuccess, setReEmbedSuccess] = useState('');
 
     const handleSearch = (value) => {
         setSearchKeyword(value);
@@ -380,11 +385,41 @@ function ManagerProduct() {
         maxCount: 10,
     };
 
+    const handleReEmbedAll = () => {
+        setReEmbedError('');
+        setReEmbedSuccess('');
+        setReEmbedModalOpen(true);
+    };
+
+    const handleReEmbedConfirm = async () => {
+        setReEmbedLoading(true);
+        setReEmbedError('');
+        setReEmbedSuccess('');
+        
+        try {
+            const result = await reEmbedAllProducts();
+            setReEmbedSuccess(result.message || 'Đã re-embed tất cả sản phẩm thành công!');
+        } catch (error) {
+            setReEmbedError(error.response?.data?.message || 'Có lỗi xảy ra khi re-embed sản phẩm');
+        } finally {
+            setReEmbedLoading(false);
+        }
+    };
+
     return (
         <div className={cx('wrapper')}>
             <div className={cx('header')}>
                 <h2>Quản lý sản phẩm</h2>
                 <Space>
+                    <Button
+                        type="default"
+                        danger
+                        loading={reEmbedLoading}
+                        onClick={handleReEmbedAll}
+                        style={{ marginRight: '8px' }}
+                    >
+                        Re-embed tất cả
+                    </Button>
                     <Button
                         type="default"
                         icon={<UploadOutlined />}
@@ -663,6 +698,63 @@ function ManagerProduct() {
                                 <li key={index}>{error}</li>
                             ))}
                         </ul>
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
+                title="Re-embed tất cả sản phẩm"
+                open={reEmbedModalOpen}
+                onOk={handleReEmbedConfirm}
+                onCancel={() => {
+                    setReEmbedModalOpen(false);
+                    setReEmbedError('');
+                    setReEmbedSuccess('');
+                }}
+                confirmLoading={reEmbedLoading}
+                okText="Xác nhận"
+                cancelText="Hủy"
+                okType="danger"
+                width={600}
+            >
+                <div style={{ marginBottom: '16px' }}>
+                    <p><strong>⚠️ Cảnh báo:</strong></p>
+                    <p>Bạn có muốn xóa và re-embed tất cả sản phẩm không? Quá trình này có thể rất tốn kém thời gian và chi phí.</p>
+                    
+                    <ul style={{ marginTop: '12px', color: '#666' }}>
+                        <li>Tất cả embeddings hiện tại sẽ bị xóa</li>
+                        <li>Toàn bộ sản phẩm sẽ được re-embed lại</li>
+                        <li>Quá trình có thể mất vài phút đến vài giờ tùy thuộc vào số lượng sản phẩm</li>
+                        <li>Chi phí API OpenAI sẽ được tính cho mỗi sản phẩm</li>
+                    </ul>
+                </div>
+
+                {/* Success Message */}
+                {reEmbedSuccess && (
+                    <div style={{ 
+                        marginTop: '12px', 
+                        padding: '8px 12px', 
+                        backgroundColor: '#f6ffed', 
+                        border: '1px solid #b7eb8f',
+                        borderRadius: '6px',
+                        color: '#52c41a'
+                    }}>
+                        <strong>✓ {reEmbedSuccess}</strong>
+                    </div>
+                )}
+
+                {/* Error Messages */}
+                {reEmbedError && (
+                    <div style={{ 
+                        marginTop: '12px', 
+                        padding: '8px 12px', 
+                        backgroundColor: '#fff2f0', 
+                        border: '1px solid #ffccc7',
+                        borderRadius: '6px',
+                        color: '#ff4d4f'
+                    }}>
+                        <strong>⚠ Lỗi khi re-embed:</strong>
+                        <p style={{ marginTop: '8px', marginBottom: '0' }}>{reEmbedError}</p>
                     </div>
                 )}
             </Modal>
