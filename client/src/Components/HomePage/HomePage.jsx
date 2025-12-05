@@ -12,6 +12,7 @@ import { Row, Col, Card, Typography, Divider, Button } from 'antd';
 
 const { Title, Paragraph } = Typography;
 
+// ...existing code...
 const settings = {
     dots: true,
     infinite: true,

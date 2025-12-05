@@ -268,6 +268,7 @@ function LoginUser() {
                     </div>
                 </Form>
             </div>
+
             <footer>
                 <Footer />
             </footer>
