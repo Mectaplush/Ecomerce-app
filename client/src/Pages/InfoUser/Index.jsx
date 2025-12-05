@@ -1,6 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Layout, Menu } from 'antd';
-import { UserOutlined, ShoppingOutlined, HeartOutlined, HistoryOutlined, LogoutOutlined } from '@ant-design/icons';
+import { Layout, Menu, Button, Drawer } from 'antd';
+import {
+    UserOutlined,
+    ShoppingOutlined,
+    HeartOutlined,
+    HistoryOutlined,
+    LogoutOutlined,
+    MenuOutlined,
+} from '@ant-design/icons';
 import { useLocation, useNavigate } from 'react-router-dom';
 import classNames from 'classnames/bind';
 import styles from './Index.module.scss';
@@ -12,8 +19,6 @@ import ManagerOrder from './Components/ManagerOrder/ManagerOrder';
 import ManagerProductWatch from './Components/ManagerProductWatch/ManagerProductWatch';
 import { requestLogout } from '../../config/request';
 import Footer from '../../Components/Footer/Footer';
-// import Wishlist from './Components/Wishlist/Wishlist';
-// import History from './Components/History/History';
 
 const { Content, Sider } = Layout;
 const cx = classNames.bind(styles);
@@ -21,8 +26,19 @@ const cx = classNames.bind(styles);
 function Index() {
     const navigate = useNavigate();
     const [currentComponent, setCurrentComponent] = useState(<InfoUser />);
+    const [drawerVisible, setDrawerVisible] = useState(false);
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
     const { pathname } = useLocation();
+
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 768);
+        };
+
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     useEffect(() => {
         if (pathname === '/orders') {
@@ -32,12 +48,14 @@ function Index() {
 
     const handleMenuClick = (key, component) => {
         if (key === 'logout') {
-            // Xử lý logout
             localStorage.removeItem('token');
             navigate('/login');
             return;
         }
         setCurrentComponent(component);
+        if (isMobile) {
+            setDrawerVisible(false);
+        }
     };
 
     const handleLogout = async () => {
@@ -75,15 +93,48 @@ function Index() {
         },
     ];
 
+    const renderSider = () => (
+        <Menu mode="inline" defaultSelectedKeys={['profile']} items={menuItems} className={cx('menu')} />
+    );
+
     return (
         <Layout className={cx('wrapper')}>
             <header>
                 <Header />
             </header>
+
+            {/* Mobile Menu Button */}
+            {isMobile && (
+                <div style={{ padding: '8px 16px', background: '#fff', borderBottom: '1px solid #f0f0f0' }}>
+                    <Button type="text" icon={<MenuOutlined />} onClick={() => setDrawerVisible(true)}>
+                        Menu
+                    </Button>
+                </div>
+            )}
+
             <Layout>
-                <Sider width={250} theme="light" className={cx('sider')}>
-                    <Menu mode="inline" defaultSelectedKeys={['profile']} items={menuItems} className={cx('menu')} />
-                </Sider>
+                {/* Desktop Sider */}
+                {!isMobile && (
+                    <Sider width={250} theme="light" className={cx('sider')}>
+                        {renderSider()}
+                    </Sider>
+                )}
+
+                {/* Mobile Drawer */}
+                {isMobile && (
+                    <Drawer
+                        title="Menu"
+                        placement="left"
+                        onClose={() => setDrawerVisible(false)}
+                        open={drawerVisible}
+                        bodyStyle={{ padding: 0 }}
+                        zIndex={1070}
+                        width={250}
+                    >
+                        {renderSider()}
+                    </Drawer>
+                )}
+
                 <Layout className={cx('content-layout')}>
                     <Content className={cx('content')}>{currentComponent}</Content>
                 </Layout>
