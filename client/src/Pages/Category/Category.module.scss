@@ -28,3 +28,422 @@
     align-items: center;
     min-height: 400px;
 }
+
+// Tablet (768px - 991px)
+@media (max-width: 991px) {
+    .content {
+        width: 98%;
+        margin: 12px auto;
+    }
+
+    .filter-section {
+        margin-bottom: 12px;
+
+        h4 {
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+    }
+
+    .pagination-container {
+        margin-top: 20px;
+    }
+
+    .pagination {
+        margin: 12px 0;
+    }
+
+    :global {
+        // Điều chỉnh layout filter và product list
+        .ant-row {
+            margin-left: -8px !important;
+            margin-right: -8px !important;
+        }
+
+        .ant-col {
+            padding-left: 8px !important;
+            padding-right: 8px !important;
+        }
+
+        // Card filter responsive
+        .ant-card {
+            .ant-card-head {
+                padding: 12px 16px;
+
+                .ant-card-head-title {
+                    font-size: 15px;
+                }
+            }
+
+            .ant-card-body {
+                padding: 12px 16px;
+            }
+        }
+
+        // Search input responsive
+        .ant-input-search {
+            .ant-input {
+                font-size: 14px;
+            }
+        }
+
+        // Slider responsive
+        .ant-slider {
+            margin: 12px 0;
+        }
+
+        // Select responsive
+        .ant-select {
+            .ant-select-selector {
+                font-size: 14px;
+            }
+        }
+
+        // Pagination responsive
+        .ant-pagination {
+            .ant-pagination-item {
+                margin: 0 2px;
+            }
+
+            .ant-pagination-options {
+                .ant-select-selector {
+                    font-size: 13px;
+                }
+            }
+        }
+    }
+}
+
+// Mobile Landscape (481px - 767px)
+@media (max-width: 767px) {
+    .content {
+        width: 100%;
+        margin: 8px auto;
+        padding: 0 8px;
+    }
+
+    .filter-section {
+        margin-bottom: 10px;
+
+        h4 {
+            font-size: 13px;
+            margin-bottom: 6px;
+            font-weight: 600;
+        }
+    }
+
+    .pagination-container {
+        margin-top: 16px;
+        padding: 0 8px;
+    }
+
+    .pagination {
+        margin: 8px 0;
+    }
+
+    .loading {
+        min-height: 300px;
+    }
+
+    :global {
+        // Layout mobile: Filter trên, products dưới
+        .ant-row {
+            margin-left: -4px !important;
+            margin-right: -4px !important;
+        }
+
+        .ant-col {
+            padding-left: 4px !important;
+            padding-right: 4px !important;
+
+            // Filter column mobile
+            &:first-child {
+                margin-bottom: 12px;
+            }
+        }
+
+        // Card filter mobile
+        .ant-card {
+            .ant-card-head {
+                padding: 8px 12px;
+
+                .ant-card-head-title {
+                    font-size: 14px;
+                }
+            }
+
+            .ant-card-body {
+                padding: 8px 12px;
+            }
+        }
+
+        // Search input mobile
+        .ant-input-search {
+            .ant-input {
+                font-size: 13px;
+                padding: 6px 11px;
+            }
+
+            .ant-input-search-button {
+                padding: 6px 8px;
+            }
+        }
+
+        // Slider mobile
+        .ant-slider {
+            margin: 8px 0;
+
+            .ant-slider-handle {
+                width: 16px;
+                height: 16px;
+            }
+        }
+
+        // Select mobile
+        .ant-select {
+            .ant-select-selector {
+                font-size: 13px;
+                padding: 4px 8px;
+            }
+
+            .ant-select-arrow {
+                font-size: 12px;
+            }
+        }
+
+        // Empty state mobile
+        .ant-empty {
+            .ant-empty-description {
+                font-size: 13px;
+            }
+        }
+
+        // Pagination mobile
+        .ant-pagination {
+            text-align: center;
+
+            .ant-pagination-item {
+                margin: 0 1px;
+                min-width: 28px;
+                height: 28px;
+                line-height: 26px;
+                font-size: 12px;
+            }
+
+            .ant-pagination-prev,
+            .ant-pagination-next {
+                min-width: 28px;
+                height: 28px;
+                line-height: 26px;
+            }
+
+            .ant-pagination-jump-prev,
+            .ant-pagination-jump-next {
+                min-width: 28px;
+                height: 28px;
+                line-height: 26px;
+            }
+
+            .ant-pagination-options {
+                .ant-select {
+                    min-width: 60px;
+
+                    .ant-select-selector {
+                        height: 28px;
+                        padding: 0 6px;
+                        font-size: 12px;
+                    }
+                }
+
+                .ant-pagination-options-size-changer {
+                    margin-right: 8px;
+                }
+            }
+
+            .ant-pagination-total-text {
+                font-size: 12px;
+            }
+        }
+    }
+}
+
+// Mobile Portrait (max-width: 480px)
+@media (max-width: 480px) {
+    .content {
+        padding: 0 4px;
+    }
+
+    .filter-section {
+        margin-bottom: 8px;
+
+        h4 {
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+    }
+
+    .pagination-container {
+        margin-top: 12px;
+        padding: 0 4px;
+    }
+
+    .loading {
+        min-height: 250px;
+    }
+
+    :global {
+        .ant-row {
+            margin-left: -2px !important;
+            margin-right: -2px !important;
+        }
+
+        .ant-col {
+            padding-left: 2px !important;
+            padding-right: 2px !important;
+
+            &:first-child {
+                margin-bottom: 8px;
+            }
+        }
+
+        // Card filter mobile small
+        .ant-card {
+            .ant-card-head {
+                padding: 6px 8px;
+
+                .ant-card-head-title {
+                    font-size: 13px;
+                }
+            }
+
+            .ant-card-body {
+                padding: 6px 8px;
+            }
+        }
+
+        // Search input mobile small
+        .ant-input-search {
+            .ant-input {
+                font-size: 12px;
+                padding: 4px 8px;
+            }
+
+            .ant-input-search-button {
+                padding: 4px 6px;
+            }
+        }
+
+        // Slider mobile small
+        .ant-slider {
+            margin: 6px 0;
+
+            .ant-slider-handle {
+                width: 14px;
+                height: 14px;
+            }
+
+            .ant-slider-track,
+            .ant-slider-rail {
+                height: 4px;
+            }
+        }
+
+        // Select mobile small
+        .ant-select {
+            .ant-select-selector {
+                font-size: 12px;
+                padding: 2px 6px;
+                min-height: 28px;
+            }
+        }
+
+        // Empty state mobile small
+        .ant-empty {
+            .ant-empty-image {
+                margin-bottom: 8px;
+            }
+
+            .ant-empty-description {
+                font-size: 12px;
+            }
+        }
+
+        // Pagination mobile small
+        .ant-pagination {
+            .ant-pagination-item {
+                margin: 0;
+                min-width: 24px;
+                height: 24px;
+                line-height: 22px;
+                font-size: 11px;
+            }
+
+            .ant-pagination-prev,
+            .ant-pagination-next {
+                min-width: 24px;
+                height: 24px;
+                line-height: 22px;
+            }
+
+            .ant-pagination-jump-prev,
+            .ant-pagination-jump-next {
+                min-width: 24px;
+                height: 24px;
+                line-height: 22px;
+            }
+
+            .ant-pagination-options {
+                margin-left: 8px;
+
+                .ant-select {
+                    min-width: 50px;
+
+                    .ant-select-selector {
+                        height: 24px;
+                        padding: 0 4px;
+                        font-size: 11px;
+                    }
+                }
+            }
+
+            .ant-pagination-total-text {
+                font-size: 11px;
+                margin-right: 8px;
+            }
+        }
+
+        // Spin loading mobile small
+        .ant-spin {
+            .ant-spin-dot {
+                font-size: 16px;
+            }
+        }
+    }
+}
+
+// Landscape mobile optimization
+@media (max-height: 500px) and (orientation: landscape) {
+    .content {
+        margin: 4px auto;
+    }
+
+    .loading {
+        min-height: 200px;
+    }
+
+    .pagination-container {
+        margin-top: 8px;
+    }
+
+    :global {
+        .ant-card {
+            .ant-card-head {
+                padding: 4px 8px;
+            }
+
+            .ant-card-body {
+                padding: 4px 8px;
+            }
+        }
+    }
+}

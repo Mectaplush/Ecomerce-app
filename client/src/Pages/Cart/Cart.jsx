@@ -2,7 +2,7 @@ import classNames from 'classnames/bind';
 import styles from './Cart.module.scss';
 import Header from '../../Components/Header/Header';
 import { Card, Table, Input, Form, Button, Checkbox, Space, message } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PhoneOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import {
     requestDeleteCart,
@@ -120,6 +120,7 @@ function Cart() {
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState(null);
     const [address, setAddress] = useState('');
+    const [note, setNote] = useState('');
 
     useEffect(() => {
         if (dataUser) {
@@ -191,35 +192,54 @@ function Cart() {
                             <Card title="THÔNG TIN NGƯỜI MUA" style={{ marginBottom: 16 }}>
                                 <Form layout="vertical">
                                     <Form.Item label="Họ tên" required>
-                                        <Input value={fullName} onChange={(e) => setFullName(e.target.value)} />
+                                        <Input
+                                            value={fullName}
+                                            onChange={(e) => setFullName(e.target.value)}
+                                            placeholder="Nhập họ và tên đầy đủ"
+                                        />
                                     </Form.Item>
+
                                     <Form.Item
-                                        label="SĐT"
+                                        label="Số điện thoại"
                                         required
                                         validateTrigger={['onChange', 'onBlur']}
                                         rules={[
                                             {
-                                                pattern: /^0\d{0,9}$/,
-                                                message: 'SĐT phải bắt đầu bằng số 0 và tối đa 10 số',
+                                                pattern: /^0\d{9}$/,
+                                                message: 'SĐT phải bắt đầu bằng số 0 và có đúng 10 số',
                                             },
                                             {
                                                 required: true,
                                                 message: 'SĐT không được để trống',
                                             },
                                         ]}
+                                        className="phone-input"
                                     >
                                         <Input
                                             value={phone}
                                             onChange={(e) => setPhone(e.target.value)}
                                             maxLength={10}
+                                            placeholder="0xxx xxx xxx"
+                                            prefix={<PhoneOutlined style={{ color: '#bbb' }} />}
                                         />
                                     </Form.Item>
 
-                                    <Form.Item label="Địa chỉ" required>
-                                        <Input.TextArea value={address} onChange={(e) => setAddress(e.target.value)} />
+                                    <Form.Item label="Địa chỉ" required className="address-input">
+                                        <Input
+                                            value={address}
+                                            onChange={(e) => setAddress(e.target.value)}
+                                            placeholder="Nhập địa chỉ chi tiết (số nhà, đường, phường/xã, quận/huyện, tỉnh/thành)"
+                                            prefix={<EnvironmentOutlined style={{ color: '#bbb' }} />}
+                                        />
                                     </Form.Item>
+
                                     <Form.Item label="Ghi chú">
-                                        <Input.TextArea />
+                                        <Input.TextArea
+                                            value={note}
+                                            onChange={(e) => setNote(e.target.value)}
+                                            placeholder="Ghi chú thêm về đơn hàng (tùy chọn)"
+                                            rows={3}
+                                        />
                                     </Form.Item>
                                 </Form>
                             </Card>
@@ -227,9 +247,18 @@ function Cart() {
                             <Card title="TỔNG TIỀN">
                                 <Space direction="vertical" style={{ width: '100%' }}>
                                     <div className={cx('total-section')}>
-                                        <p>Tổng cộng: {totalPrice.toLocaleString()} đ</p>
-                                        <p>Giảm giá Voucher: 0 đ</p>
-                                        <p>Thành tiền: {totalPrice.toLocaleString()} đ</p>
+                                        <p>
+                                            <span>Tổng cộng:</span>
+                                            <span>{totalPrice.toLocaleString()} đ</span>
+                                        </p>
+                                        <p>
+                                            <span>Giảm giá Voucher:</span>
+                                            <span>0 đ</span>
+                                        </p>
+                                        <p>
+                                            <span>Thành tiền:</span>
+                                            <span>{totalPrice.toLocaleString()} đ</span>
+                                        </p>
                                         <p>(Giá đã bao gồm VAT)</p>
                                     </div>
 

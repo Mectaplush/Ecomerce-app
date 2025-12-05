@@ -80,7 +80,7 @@ function InfoUser() {
                         className={cx('form-item')}
                         rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}
                     >
-                        <Input />
+                        <Input placeholder="Nhập chi tiết địa chỉ nhà" />
                     </Form.Item>
                 </div>
 
@@ -94,7 +94,7 @@ function InfoUser() {
                             { pattern: /^[0-9]{10}$/, message: 'Số điện thoại không hợp lệ!' },
                         ]}
                     >
-                        <Input />
+                        <Input placeholder="Nhập số điện thoại" />
                     </Form.Item>
                 </div>
 

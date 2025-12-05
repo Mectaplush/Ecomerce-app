@@ -225,8 +225,8 @@ function Header() {
             </div>
 
             {/* Hiển thị category-list khi menuOpen hoặc ở desktop */}
-            {(menuOpen || window.innerWidth > 600) && (
-                <div className={cx('category-list')}>
+            {(menuOpen || window.innerWidth > 768) && (
+                <div className={cx('category-list', menuOpen ? 'show' : '')}>
                     {category.map((item) => (
                         <Link key={item.id} to={`/category/${item.id}`}>
                             <div className={cx('category-item')}>
