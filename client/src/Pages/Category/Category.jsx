@@ -122,7 +122,7 @@ function Category() {
             <Header />
             <Content className={cx('content')}>
                 <Row gutter={[24, 24]}>
-                    <Col span={6}>
+                    <Col xs={24} sm={24} md={24} lg={6} span={6}>
                         <Card title="Bộ lọc sản phẩm">
                             <div className={cx('filter-section')}>
                                 <h4>Tìm kiếm</h4>
@@ -177,7 +177,7 @@ function Category() {
                     </Col>
 
                     {/* Product list */}
-                    <Col span={18}>
+                    <Col xs={24} sm={24} md={24} lg={18} span={18}>
                         {loading ? (
                             <div className={cx('loading')}>
                                 <Spin size="large" />
@@ -186,7 +186,7 @@ function Category() {
                             <>
                                 <Row gutter={[16, 16]}>
                                     {paginatedProducts.map((product) => (
-                                        <Col key={product.id} xs={24} sm={12} md={8} lg={6}>
+                                        <Col key={product.id} xs={12} sm={8} md={6} lg={8}>
                                             <CardBody product={product} />
                                         </Col>
                                     ))}

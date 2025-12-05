@@ -11,3 +11,340 @@
     grid-template-columns: repeat(4, 1fr);
     gap: 10px;
 }
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 32px;
+    padding: 20px 0;
+
+    :global(.ant-pagination) {
+        .ant-pagination-item {
+            border-radius: 6px;
+
+            &:hover {
+                border-color: #1890ff;
+            }
+        }
+
+        .ant-pagination-item-active {
+            background: linear-gradient(135deg, #1890ff, #722ed1);
+            border-color: #1890ff;
+
+            a {
+                color: white;
+            }
+        }
+
+        .ant-pagination-options {
+            .ant-select-selector {
+                border-radius: 6px;
+            }
+        }
+    }
+}
+// Large Desktop (1200px and up)
+@media (min-width: 1200px) {
+    .wrapper {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        max-width: 1200px;
+        margin: 0 auto 24px auto;
+    }
+}
+
+// Desktop (1024px to 1199px)
+@media (max-width: 1199px) {
+    .wrapper {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    .card-item {
+        &:hover {
+            transform: translateY(-3px);
+        }
+    }
+}
+
+// Tablet Landscape (768px to 1023px)
+@media (max-width: 1023px) {
+    .manager-product-watch {
+        padding: 0 8px;
+
+        h1 {
+            font-size: 17px;
+            padding-bottom: 12px;
+            margin-bottom: 18px;
+            text-align: center;
+        }
+    }
+
+    .wrapper {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+        margin-bottom: 20px;
+    }
+
+    .card-item {
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+        }
+    }
+
+    .pagination {
+        margin-top: 24px;
+        padding: 16px 0;
+
+        :global(.ant-pagination) {
+            .ant-pagination-item,
+            .ant-pagination-prev,
+            .ant-pagination-next {
+                min-width: 36px;
+                height: 36px;
+                line-height: 34px;
+            }
+        }
+    }
+}
+
+// Tablet Portrait (768px and below) - Critical breakpoint
+@media (max-width: 768px) {
+    .manager-product-watch {
+        padding: 0 4px;
+
+        h1 {
+            font-size: 16px;
+            text-align: center;
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+    }
+
+    .wrapper {
+        grid-template-columns: repeat(2, 1fr) !important; // Force 2 columns
+        gap: 10px !important;
+        margin-bottom: 16px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0 2px;
+    }
+
+    .card-item {
+        width: 100%;
+        min-width: 0; // Prevent grid items from overflowing
+
+        // Disable hover effects on mobile for better performance
+        &:hover {
+            transform: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        // Make sure CardBody content fits properly
+        :global(.card-body) {
+            padding: 8px;
+
+            .product-image {
+                height: 140px;
+                object-fit: cover;
+            }
+
+            .product-title {
+                font-size: 13px;
+                line-height: 1.3;
+                margin-bottom: 6px;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .product-price {
+                font-size: 14px;
+                font-weight: 600;
+                color: #e74c3c;
+            }
+
+            .product-specs {
+                font-size: 11px;
+                opacity: 0.8;
+                line-height: 1.2;
+            }
+        }
+    }
+
+    .pagination {
+        margin-top: 20px;
+        padding: 12px 0;
+
+        :global(.ant-pagination) {
+            font-size: 14px;
+
+            .ant-pagination-item,
+            .ant-pagination-prev,
+            .ant-pagination-next {
+                min-width: 32px;
+                height: 32px;
+                line-height: 30px;
+            }
+
+            .ant-pagination-options {
+                margin-left: 8px;
+
+                .ant-select {
+                    min-width: 60px;
+                }
+
+                .ant-select-selector {
+                    height: 32px;
+                    font-size: 12px;
+                }
+            }
+        }
+    }
+}
+
+// Mobile (480px to 767px)
+@media (max-width: 480px) {
+    .manager-product-watch {
+        padding: 0 2px;
+
+        h1 {
+            font-size: 15px;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+    }
+
+    .wrapper {
+        gap: 8px !important;
+        margin-bottom: 12px;
+        padding: 0 1px;
+    }
+
+    .card-item {
+        :global(.card-body) {
+            padding: 6px;
+
+            .product-image {
+                height: 120px;
+            }
+
+            .product-title {
+                font-size: 12px;
+                margin-bottom: 4px;
+            }
+
+            .product-price {
+                font-size: 13px;
+            }
+
+            .product-specs {
+                font-size: 10px;
+            }
+        }
+    }
+
+    .pagination {
+        margin-top: 16px;
+        padding: 8px 0;
+
+        :global(.ant-pagination) {
+            .ant-pagination-item,
+            .ant-pagination-prev,
+            .ant-pagination-next {
+                min-width: 28px;
+                height: 28px;
+                line-height: 26px;
+                font-size: 12px;
+            }
+
+            .ant-pagination-options {
+                .ant-select-selector {
+                    height: 28px;
+                    font-size: 11px;
+                }
+            }
+        }
+    }
+}
+
+// Extra Small Mobile (360px and below)
+@media (max-width: 360px) {
+    .manager-product-watch {
+        padding: 0 1px;
+    }
+
+    .wrapper {
+        gap: 6px !important;
+        padding: 0;
+    }
+
+    .card-item {
+        :global(.card-body) {
+            padding: 5px;
+
+            .product-image {
+                height: 100px;
+            }
+
+            .product-title {
+                font-size: 11px;
+                line-height: 1.2;
+            }
+
+            .product-price {
+                font-size: 12px;
+            }
+
+            .product-specs {
+                font-size: 9px;
+            }
+        }
+    }
+
+    .pagination {
+        :global(.ant-pagination) {
+            .ant-pagination-item,
+            .ant-pagination-prev,
+            .ant-pagination-next {
+                min-width: 24px;
+                height: 24px;
+                line-height: 22px;
+                font-size: 11px;
+            }
+        }
+    }
+}
+
+// Landscape orientation on mobile devices
+@media (max-width: 768px) and (orientation: landscape) {
+    .wrapper {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .card-item {
+        :global(.card-body) {
+            .product-image {
+                height: 100px;
+            }
+        }
+    }
+}
+
+// Prevent horizontal scrolling
+* {
+    box-sizing: border-box;
+}
+
+.manager-product-watch {
+    overflow-x: hidden;
+    max-width: 100%;
+}
+
+.wrapper {
+    overflow: hidden;
+    max-width: 100%;
+}

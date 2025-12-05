@@ -21,10 +21,130 @@
             .ant-table-thead > tr > th {
                 background: #fafafa;
                 font-weight: 600;
+                padding: 16px 12px;
+                white-space: nowrap;
             }
 
             .ant-table-tbody > tr > td {
-                padding: 16px;
+                padding: 16px 12px;
+                vertical-align: top;
+            }
+
+            // Desktop styles - Cải thiện layout cho màn hình lớn
+            .ant-table-tbody > tr > td:first-child {
+                min-width: 300px;
+                width: 35%;
+                max-width: 400px;
+
+                .ant-space {
+                    align-items: flex-start;
+                    width: 100%;
+
+                    img {
+                        width: 70px !important;
+                        height: 70px !important;
+                        flex-shrink: 0;
+                        border-radius: 4px;
+                        object-fit: cover;
+                    }
+
+                    span {
+                        font-size: 14px;
+                        line-height: 1.4;
+                        max-width: 220px;
+                        overflow: hidden;
+                        display: -webkit-box;
+                        -webkit-line-clamp: 3;
+                        -webkit-box-orient: vertical;
+                        word-break: break-word;
+                        color: #333;
+                        font-weight: 500;
+                    }
+                }
+            }
+
+            // Cột đơn giá - Desktop
+            .ant-table-tbody > tr > td:nth-child(2) {
+                min-width: 130px;
+                width: 18%;
+                font-weight: 600;
+                color: #1890ff;
+                font-size: 15px;
+                white-space: nowrap;
+                text-align: right;
+            }
+            .ant-table-thead > tr > th:nth-child(2) {
+                width: 18%;
+                text-align: right;
+            }
+
+            // Cột số lượng - Desktop
+            .ant-table-tbody > tr > td:nth-child(3) {
+                min-width: 100px;
+                width: 12%;
+                text-align: center;
+
+                input {
+                    width: 60px !important;
+                    text-align: center;
+                    font-size: 14px;
+                    border-radius: 4px;
+                }
+            }
+            .ant-table-thead > tr > th:nth-child(3) {
+                width: 12%;
+                text-align: center;
+            }
+
+            // Cột thành tiền - Desktop
+            .ant-table-tbody > tr > td:nth-child(4) {
+                min-width: 150px;
+                width: 25%;
+                font-weight: 700;
+                color: #ee4d2d;
+                font-size: 16px;
+                white-space: nowrap;
+                text-align: right;
+
+                // Đảm bảo giá tiền không bị xuống hàng
+                > span {
+                    display: inline-block;
+                    white-space: nowrap;
+                }
+            }
+            .ant-table-thead > tr > th:nth-child(4) {
+                width: 25%;
+                text-align: right;
+            }
+
+            // Cột hành động - Desktop
+            .ant-table-tbody > tr > td:nth-child(5) {
+                min-width: 80px;
+                width: 10%;
+                text-align: center;
+
+                button {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 6px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin: 0 auto;
+
+                    .anticon {
+                        font-size: 16px;
+                    }
+
+                    &:hover {
+                        transform: scale(1.05);
+                        transition: all 0.2s ease;
+                    }
+                }
+            }
+            .ant-table-thead > tr > th:nth-child(5) {
+                width: 10%;
+                text-align: center;
             }
         }
 
@@ -51,14 +171,57 @@
         // Tùy chỉnh style cho form
         .ant-form-item-label > label {
             font-weight: 500;
+            color: #333;
+            font-size: 14px;
         }
 
         .ant-input,
         .ant-select-selector {
-            border-radius: 6px;
-            &:hover,
-            &:focus {
+            border-radius: 8px;
+            border: 1.5px solid #e0e0e0;
+            padding: 12px 16px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+
+            &:hover {
                 border-color: #40a9ff;
+                box-shadow: 0 2px 4px rgba(24, 144, 255, 0.1);
+            }
+
+            &:focus {
+                border-color: #1890ff;
+                box-shadow: 0 0 0 3px rgba(24, 144, 255, 0.1);
+            }
+        }
+
+        // Style đặc biệt cho input số điện thoại
+        .phone-input {
+            .ant-input {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                font-weight: 500;
+                letter-spacing: 1px;
+                text-align: left;
+
+                &::placeholder {
+                    color: #bbb;
+                    font-weight: normal;
+                    letter-spacing: normal;
+                }
+            }
+        }
+
+        // Icon trong form
+        .form-item-with-icon {
+            position: relative;
+
+            .form-icon {
+                position: absolute;
+                right: 12px;
+                top: 50%;
+                transform: translateY(-50%);
+                color: #bbb;
+                z-index: 2;
+                pointer-events: none;
             }
         }
 
@@ -82,7 +245,8 @@
                 border: 1px solid #1890ff;
                 color: #1890ff;
                 &:hover {
-                    background: rgba(24, 144, 255, 0.1);
+                    //background: rgba(24, 144, 255, 0.1);
+                    background: #40a9ff;
                     transform: translateY(-1px);
                 }
             }
@@ -130,6 +294,12 @@
             color: #666;
             margin-top: 8px;
             justify-content: flex-end;
+        }
+
+        // Đảm bảo giá tiền trong total không bị xuống hàng
+        > span {
+            white-space: nowrap;
+            text-align: right;
         }
     }
 }
@@ -189,6 +359,662 @@
                     &:hover {
                         background: #fff9f8;
                     }
+                }
+            }
+        }
+    }
+}
+
+.checkout-section {
+    display: grid;
+    grid-template-columns: 4fr 2fr; // Thay đổi từ 1fr 400px thành tỷ lệ 6:4
+    gap: 24px;
+    align-items: start; // Căn chỉnh các card từ trên xuống
+}
+
+// Large Desktop (min-width: 1400px) - Tối ưu cho màn hình lớn
+@media (min-width: 1400px) {
+    .container {
+        width: 95%;
+        max-width: 1700px;
+    }
+
+    :global {
+        .ant-table {
+            .ant-table-thead > tr > th {
+                padding: 20px 16px;
+                font-size: 18px;
+            }
+
+            .ant-table-tbody > tr > td:first-child {
+                min-width: 350px;
+                width: 40%;
+
+                .ant-space {
+                    img {
+                        width: 80px !important;
+                        height: 80px !important;
+                    }
+
+                    span {
+                        font-size: 23px;
+                        max-width: 1000px;
+                        -webkit-line-clamp: 8;
+                    }
+                }
+            }
+
+            .ant-table-tbody > tr > td:nth-child(2) {
+                min-width: 150px;
+                width: 40%;
+                font-size: 20px;
+            }
+
+            .ant-table-tbody > tr > td:nth-child(3) {
+                min-width: 120px;
+                width: 12%;
+
+                input {
+                    width: 70px !important;
+                    font-size: 25px;
+                }
+            }
+
+            .ant-table-tbody > tr > td:nth-child(4) {
+                min-width: 180px;
+                width: 20%;
+                font-size: 20px;
+            }
+
+            .ant-table-tbody > tr > td:nth-child(5) {
+                min-width: 100px;
+                width: 8%;
+
+                button {
+                    width: 40px;
+                    height: 40px;
+
+                    .anticon {
+                        font-size: 18px;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Desktop (1200px - 1399px)
+@media (min-width: 1200px) and (max-width: 1399px) {
+    .container {
+        width: 92%;
+    }
+
+    :global {
+        .ant-table {
+            .ant-table-tbody > tr > td:first-child {
+                min-width: 320px;
+                width: 38%;
+
+                .ant-space {
+                    span {
+                        max-width: 230px;
+                    }
+                }
+            }
+
+            .ant-table-tbody > tr > td:nth-child(2) {
+                min-width: 140px;
+                width: 19%;
+            }
+
+            .ant-table-tbody > tr > td:nth-child(4) {
+                min-width: 160px;
+                width: 23%;
+                font-size: 16px;
+            }
+        }
+    }
+}
+
+// Tablet lớn (1025px - 1199px)
+@media (min-width: 1025px) and (max-width: 1199px) {
+    .container {
+        width: 95%;
+    }
+
+    :global {
+        .ant-table {
+            .ant-table-content {
+                min-width: 900px;
+            }
+
+            .ant-table-tbody > tr > td:first-child {
+                min-width: 280px;
+                width: 35%;
+
+                .ant-space {
+                    img {
+                        width: 65px !important;
+                        height: 65px !important;
+                    }
+
+                    span {
+                        font-size: 13px;
+                        max-width: 200px;
+                        -webkit-line-clamp: 3;
+                    }
+                }
+            }
+
+            .ant-table-tbody > tr > td:nth-child(2) {
+                min-width: 120px;
+                width: 18%;
+                font-size: 14px;
+            }
+
+            .ant-table-tbody > tr > td:nth-child(3) {
+                min-width: 90px;
+                width: 12%;
+
+                input {
+                    width: 55px !important;
+                }
+            }
+
+            .ant-table-tbody > tr > td:nth-child(4) {
+                min-width: 140px;
+                width: 25%;
+                font-size: 15px;
+            }
+
+            .ant-table-tbody > tr > td:nth-child(5) {
+                width: 10%;
+
+                button {
+                    width: 34px;
+                    height: 34px;
+                }
+            }
+        }
+    }
+}
+
+// Tablet (769px - 1024px)
+@media (min-width: 769px) and (max-width: 1024px) {
+    .container {
+        width: 98%;
+    }
+
+    .checkout-section {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    :global {
+        .ant-table {
+            .ant-table-content {
+                overflow-x: auto;
+                min-width: 750px;
+            }
+
+            .ant-table-thead > tr > th {
+                padding: 12px 8px;
+                font-size: 13px;
+            }
+
+            .ant-table-tbody > tr > td {
+                padding: 12px 8px;
+                font-size: 13px;
+            }
+
+            .ant-table-tbody > tr > td:first-child {
+                min-width: 250px;
+                width: 40%;
+
+                .ant-space {
+                    img {
+                        width: 60px !important;
+                        height: 60px !important;
+                    }
+
+                    span {
+                        font-size: 12px;
+                        max-width: 180px;
+                        -webkit-line-clamp: 2;
+                    }
+                }
+            }
+
+            .ant-table-tbody > tr > td:nth-child(2) {
+                min-width: 100px;
+                width: 18%;
+                font-size: 13px;
+            }
+
+            .ant-table-tbody > tr > td:nth-child(3) {
+                width: 12%;
+
+                input {
+                    width: 50px !important;
+                    font-size: 12px;
+                }
+            }
+
+            .ant-table-tbody > tr > td:nth-child(4) {
+                min-width: 120px;
+                width: 22%;
+                font-size: 14px;
+            }
+
+            .ant-table-tbody > tr > td:nth-child(5) {
+                width: 8%;
+
+                button {
+                    width: 32px;
+                    height: 32px;
+
+                    .anticon {
+                        font-size: 14px;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Tablet nhỏ và Mobile (max-width: 768px)
+@media (max-width: 768px) {
+    .main {
+        padding: 16px 12px;
+    }
+
+    .container {
+        width: 100%;
+    }
+
+    .checkout-section {
+        margin-top: 16px;
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .voucher-section {
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .total-section {
+        padding: 12px 0;
+        margin-bottom: 16px;
+
+        p {
+            margin: 8px 0;
+            font-size: 14px;
+            flex-wrap: wrap;
+
+            &:nth-child(3) {
+                font-size: 15px;
+            }
+        }
+    }
+
+    :global {
+        // Table responsive
+        .ant-table {
+            .ant-table-content {
+                overflow-x: auto;
+                min-width: 450px;
+            }
+
+            .ant-table-thead > tr > th {
+                font-size: 12px;
+                padding: 8px 4px;
+                white-space: nowrap;
+            }
+
+            .ant-table-tbody > tr > td {
+                padding: 8px 4px;
+                font-size: 13px;
+                white-space: nowrap;
+            }
+
+            // Style cho cột sản phẩm mobile
+            .ant-table-tbody > tr > td:first-child {
+                min-width: 150px;
+                width: 50%;
+
+                .ant-space {
+                    flex-direction: column;
+                    align-items: flex-start;
+                    gap: 4px;
+
+                    img {
+                        width: 45px !important;
+                        height: 45px !important;
+                    }
+
+                    span {
+                        font-size: 11px;
+                        max-width: 120px;
+                        -webkit-line-clamp: 2;
+                    }
+                }
+            }
+
+            // Cột số lượng mobile
+            .ant-table-tbody > tr > td:nth-child(3) {
+                min-width: 50px;
+                width: 20%;
+
+                input {
+                    width: 35px !important;
+                    font-size: 11px;
+                    padding: 2px 4px;
+                }
+            }
+
+            // Cột thành tiền mobile
+            .ant-table-tbody > tr > td:nth-child(4) {
+                display: table-cell;
+                font-weight: 600;
+                color: #ee4d2d;
+                min-width: 80px;
+                width: 25%;
+            }
+            .ant-table-thead > tr > th:nth-child(4) {
+                display: table-cell;
+                min-width: 80px;
+                width: 25%;
+            }
+
+            // Cột hành động mobile
+            .ant-table-tbody > tr > td:nth-child(5) {
+                display: table-cell !important;
+                min-width: 35px;
+                width: 5% !important;
+                text-align: center;
+                padding: 4px 2px;
+                max-width: 40px;
+
+                button {
+                    font-size: 14px !important;
+                    width: 28px;
+                    height: 28px;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+
+                    .anticon {
+                        font-size: 14px;
+                    }
+                }
+            }
+            .ant-table-thead > tr > th:nth-child(5) {
+                display: table-cell !important;
+                min-width: 35px;
+                width: 5%;
+                max-width: 40px;
+            }
+        }
+
+        // Card responsive
+        .ant-card {
+            margin-bottom: 12px;
+
+            .ant-card-head {
+                padding: 0 16px;
+
+                .ant-card-head-title {
+                    font-size: 14px;
+                }
+            }
+
+            .ant-card-body {
+                padding: 12px;
+            }
+        }
+
+        // Form responsive
+        .ant-form-item {
+            margin-bottom: 16px;
+        }
+
+        .ant-form-item-label > label {
+            font-size: 13px;
+        }
+
+        .ant-input,
+        .ant-input-number,
+        .ant-select-selector {
+            font-size: 14px;
+        }
+
+        // Button responsive
+        .ant-btn {
+            height: 44px;
+            font-size: 14px;
+            font-weight: 600;
+
+            &.ant-btn-block {
+                margin-bottom: 8px;
+            }
+        }
+
+        // Space responsive
+        .ant-space-vertical {
+            .ant-space-item {
+                button {
+                    height: 44px;
+                    font-size: 14px;
+                    margin: 4px 0;
+                }
+            }
+        }
+
+        // Checkbox responsive
+        .ant-checkbox-wrapper {
+            font-size: 13px;
+            line-height: 1.4;
+        }
+    }
+}
+
+// Mobile nhỏ (max-width: 480px)
+@media (max-width: 480px) {
+    .main {
+        padding: 12px 8px;
+    }
+
+    .container {
+        width: 100%;
+        padding: 0 4px;
+    }
+
+    .total-section {
+        p {
+            font-size: 13px;
+            flex-wrap: wrap;
+
+            &:nth-child(3) {
+                font-size: 14px;
+            }
+        }
+    }
+
+    :global {
+        // Table mobile - Giữ nguyên tất cả cột quan trọng
+        .ant-table {
+            font-size: 12px;
+
+            .ant-table-content {
+                min-width: 360px;
+            }
+
+            .ant-table-thead > tr > th {
+                font-size: 10px;
+                padding: 3px 1px;
+            }
+
+            .ant-table-tbody > tr > td {
+                padding: 3px 1px;
+            }
+
+            // Cột sản phẩm mobile nhỏ
+            .ant-table-tbody > tr > td:first-child {
+                min-width: 100px;
+                width: 55%;
+
+                .ant-space {
+                    img {
+                        width: 30px !important;
+                        height: 30px !important;
+                    }
+
+                    span {
+                        font-size: 9px;
+                        max-width: 70px;
+                    }
+                }
+            }
+
+            // Cột số lượng mobile nhỏ
+            .ant-table-tbody > tr > td:nth-child(3) {
+                min-width: 40px;
+                width: 20%;
+
+                input {
+                    width: 25px !important;
+                    font-size: 9px;
+                    padding: 1px;
+                }
+            }
+
+            // Đảm bảo cột "Thành tiền" vẫn hiển thị
+            .ant-table-tbody > tr > td:nth-child(4) {
+                display: table-cell;
+                font-weight: 600;
+                color: #ee4d2d;
+                min-width: 60px;
+                width: 20%;
+                font-size: 9px;
+            }
+            .ant-table-thead > tr > th:nth-child(4) {
+                display: table-cell;
+                min-width: 60px;
+                width: 20%;
+            }
+
+            // Cột hành động mobile nhỏ - Đảm bảo hiển thị
+            .ant-table-tbody > tr > td:nth-child(5) {
+                display: table-cell !important;
+                min-width: 25px;
+                width: 5% !important;
+                text-align: center;
+                padding: 1px;
+                max-width: 30px;
+
+                button {
+                    font-size: 10px !important;
+                    width: 20px;
+                    height: 20px;
+                    padding: 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+
+                    .anticon {
+                        font-size: 10px;
+                    }
+                }
+            }
+            .ant-table-thead > tr > th:nth-child(5) {
+                display: table-cell !important;
+                min-width: 25px;
+                width: 5%;
+                text-align: center;
+                font-size: 9px;
+                max-width: 30px;
+            }
+        }
+
+        // Card mobile
+        .ant-card {
+            .ant-card-head {
+                padding: 0 12px;
+
+                .ant-card-head-title {
+                    font-size: 13px;
+                }
+            }
+
+            .ant-card-body {
+                padding: 8px;
+            }
+        }
+
+        // Form mobile
+        .ant-form-item-label > label {
+            font-size: 12px;
+        }
+
+        .ant-input,
+        .ant-input-number {
+            font-size: 13px;
+            padding: 6px 8px;
+        }
+
+        // Button mobile
+        .ant-btn {
+            height: 40px;
+            font-size: 13px;
+            padding: 0 12px;
+        }
+
+        .ant-space-vertical {
+            .ant-space-item {
+                button {
+                    height: 40px;
+                    font-size: 13px;
+                    margin: 3px 0;
+                }
+            }
+        }
+
+        // Checkbox mobile
+        .ant-checkbox-wrapper {
+            font-size: 12px;
+        }
+    }
+}
+
+// Landscape mobile
+@media (max-height: 500px) and (orientation: landscape) {
+    .main {
+        padding: 8px 12px;
+    }
+
+    .checkout-section {
+        margin-top: 12px;
+    }
+
+    :global {
+        .ant-card {
+            .ant-card-body {
+                padding: 8px;
+            }
+        }
+
+        .ant-btn {
+            height: 36px;
+            font-size: 12px;
+        }
+
+        .ant-space-vertical {
+            .ant-space-item {
+                button {
+                    height: 36px;
+                    margin: 2px 0;
                 }
             }
         }

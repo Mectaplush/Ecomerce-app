@@ -338,11 +338,11 @@ function Contact() {
                                     <Paragraph>
                                         <Text strong>Tài khoản cá nhân - Ngân hàng TP BANK</Text>
                                         <br />
-                                        STK: 0811 8889 999
+                                        STK: 1234567890
                                         <br />
                                         Ngân hàng: TP BANK
                                         <br />
-                                        Tên: TRUONG THI NGUYET
+                                        Tên: MKTeam
                                     </Paragraph>
                                 </div>
 
@@ -385,9 +385,9 @@ function Contact() {
                                     <Space direction="vertical" style={{ width: '100%' }}>
                                         <Space align="start">
                                             <MailOutlined />
-                                            <Text>l2team.contact@gmail.com</Text>
+                                            <Text>weareone.pc@gmail.com</Text>
                                         </Space>
-                                        <Space align="start">
+                                        {/* <Space align="start">
                                             <FacebookOutlined />
                                             <a
                                                 href="https://www.facebook.com/pcmarket.vn"
@@ -402,7 +402,7 @@ function Contact() {
                                             <a href="https://pcmarket.vn/" target="_blank" rel="noopener noreferrer">
                                                 pcmarket.vn
                                             </a>
-                                        </Space>
+                                        </Space> */}
                                     </Space>
                                 </div>
                             </Card>

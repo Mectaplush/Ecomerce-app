@@ -20,3 +20,45 @@
         }
     }
 }
+
+// Responsive styles
+@media (max-width: 768px) {
+    .wrapper {
+        .sider {
+            position: fixed !important;
+            top: 0;
+            left: -250px;
+            height: 100vh;
+            z-index: 000;
+            transition: left 0.3s ease;
+            margin-top: 0;
+
+            &.sider-open {
+                left: 0;
+            }
+        }
+
+        .content-layout {
+            padding: 8px;
+            margin-left: 0 !important;
+
+            .content {
+                padding: 16px;
+                margin: 0;
+            }
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .wrapper {
+        .content-layout {
+            padding: 4px;
+
+            .content {
+                padding: 12px;
+                border-radius: 4px;
+            }
+        }
+    }
+}
