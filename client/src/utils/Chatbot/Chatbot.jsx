@@ -77,10 +77,15 @@ const Chatbot = () => {
             const hasImages = selectedImages.length > 0;
             
             // Add user message with images to chat
+            const messageContent = userMessage || (hasImages ? 
+                `Đã gửi ${selectedImages.length} hình ảnh để tìm sản phẩm tương tự` : 
+                'Tin nhắn trống');
+            
             setMessages((prev) => [...prev, { 
-                content: userMessage || 'Đã gửi hình ảnh', 
+                content: messageContent, 
                 sender: 'user',
-                images: hasImages ? selectedImages.map(img => img.preview) : null
+                images: hasImages ? selectedImages.map(img => img.preview) : null,
+                imageCount: selectedImages.length
             }]);
             
             setInputMessage('');
@@ -99,7 +104,16 @@ const Chatbot = () => {
                     question: userMessage,
                     images: imageData
                 });
-                setMessages((prev) => [...prev, { content: response.metadata, sender: 'bot' }]);
+                
+                // Enhanced bot message with multimodal info
+                const botMessage = {
+                    content: response.metadata,
+                    sender: 'bot',
+                    isMultimodal: hasImages,
+                    hasClipSearch: hasImages && imageData.length > 0
+                };
+                
+                setMessages((prev) => [...prev, botMessage]);
                 
                 // Clear selected images after sending
                 selectedImages.forEach(img => URL.revokeObjectURL(img.preview));
@@ -138,6 +152,8 @@ const Chatbot = () => {
                                 key={index}
                                 className={`${styles.message} ${
                                     message.sender === 'user' ? styles.userMessage : styles.botMessage
+                                } ${message.sender === 'bot' && message.isMultimodal ? styles.multimodalMessage : ''} ${
+                                    message.sender === 'user' && message.images ? styles.hasImages : ''
                                 }`}
                             >
                                 <div className={styles.messageContent}>

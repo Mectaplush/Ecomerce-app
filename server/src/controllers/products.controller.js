@@ -15,38 +15,47 @@ const embeddingService = require('../services/embeddingService');
      */
 async function createProductEmbeddings(product) {
     try {
-        // Create text content for embedding
-        const textContent = `${product.name} ${product.description} ${product.componentType}`;
+        // Create traditional OpenAI text embedding (for backward compatibility)
+        // const textContent = `${product.name} ${product.description} ${product.componentType}`;
+        // await embeddingService.embedText(product.id, textContent, {
+        //     productId: product.id,
+        //     name: product.name,
+        //     price: product.price,
+        //     componentType: product.componentType,
+        //     categoryId: product.categoryId
+        // });
 
-        // Embed text content
-        await embeddingService.embedText(product.id, textContent, {
-            productId: product.id,
-            name: product.name,
-            price: product.price,
-            componentType: product.componentType,
-            categoryId: product.categoryId
-        });
-
-        // Embed images if they exist
-        if (product.images) {
-            const imageUrls = product.images.split(',').map(url => url.trim());
-            for (let i = 0; i < imageUrls.length; i++) {
-                const imageId = `${product.id}_image${i}`;
-                const imageDescription = `Product image for ${product.name}`;
-
-                await embeddingService.embedImage(
-                    imageId,
-                    imageUrls[i],
-                    undefined,
-                    {
-                        productId: product.id,
-                        imageIndex: i,
-                        name: product.name,
-                        componentType: product.componentType
-                    }
-                );
-            }
+        // Create CLIP multimodal embedding (new approach)
+        try {
+            await embeddingService.embedProductMultimodal(product);
+        } catch (clipError) {
+            console.warn(`Failed to create CLIP embedding for product ${product.id}:`, clipError);
         }
+
+        // Embed individual images for fallback (legacy approach)
+        // if (product.images) {
+        //     const imageUrls = product.images.split(',').map(url => url.trim());
+        //     for (let i = 0; i < imageUrls.length; i++) {
+        //         const imageId = `${product.id}_image${i}`;
+        //         const imageDescription = `Product image for ${product.name}`;
+
+        //         try {
+        //             await embeddingService.embedImage(
+        //                 imageId,
+        //                 imageUrls[i],
+        //                 undefined,
+        //                 {
+        //                     productId: product.id,
+        //                     imageIndex: i,
+        //                     name: product.name,
+        //                     componentType: product.componentType
+        //                 }
+        //             );
+        //         } catch (error) {
+        //             console.warn(`Failed to embed image ${i} for product ${product.id}:`, error);
+        //         }
+        //     }
+        // }
     } catch (error) {
         console.error('Error creating embeddings for product:', product.id, error);
         // Don't throw error to prevent product creation failure
@@ -55,44 +64,63 @@ async function createProductEmbeddings(product) {
 
 async function updateProductEmbeddings(product, oldImages = null) {
     try {
-        // Update text embedding
-        const textContent = `${product.name} ${product.description} ${product.componentType}`;
-        await embeddingService.embedText(product.id, textContent, {
-            productId: product.id,
-            name: product.name,
-            price: product.price,
-            componentType: product.componentType,
-            categoryId: product.categoryId
-        });
+        // Update traditional OpenAI text embedding
+        // const textContent = `${product.name} ${product.description} ${product.componentType}`;
+        // await embeddingService.embedText(product.id, textContent, {
+        //     productId: product.id,
+        //     name: product.name,
+        //     price: product.price,
+        //     componentType: product.componentType,
+        //     categoryId: product.categoryId
+        // });
 
-        // Handle image updates
-        if (product.images) {
-            // If images changed, delete old image embeddings first
-            if (oldImages && oldImages !== product.images) {
-                embeddingService.index.deleteMany({
-                    productId: { $eq: `${product.id}}` }
-                })
+        // Update CLIP multimodal embedding
+        try {
+            // Delete old CLIP embedding first
+            try {
+                await embeddingService.index.deleteOne(`${product.id}_clip`);
+            } catch (deleteError) {
+                console.warn(`Failed to delete old CLIP embedding for product ${product.id}:`, deleteError);
             }
 
-            // Create new image embeddings
-            const imageUrls = product.images.split(',').map(url => url.trim());
-            for (let i = 0; i < imageUrls.length; i++) {
-                const imageId = `${product.id}_image${i}`;
-                const imageDescription = `Product image for ${product.name}`;
-
-                await embeddingService.embedImage(
-                    imageId,
-                    imageUrls[i],
-                    null,
-                    {
-                        productId: product.id,
-                        imageIndex: i,
-                        name: product.name,
-                        componentType: product.componentType
-                    }
-                );
-            }
+            // Create new CLIP embedding
+            await embeddingService.embedProductMultimodal(product);
+        } catch (clipError) {
+            console.warn(`Failed to update CLIP embedding for product ${product.id}:`, clipError);
         }
+
+        // Handle image updates for legacy approach
+        // if (product.images) {
+        //     // If images changed, clean up old image embeddings
+        //     if (oldImages && oldImages !== product.images) {
+        //         embeddingService.index.deleteMany({
+        //             productId: { $eq: `${product.id}}` }
+        //         })
+        //     }
+
+        //     // Create new image embeddings
+        //     const imageUrls = product.images.split(',').map(url => url.trim());
+        //     for (let i = 0; i < imageUrls.length; i++) {
+        //         const imageId = `${product.id}_image${i}`;
+        //         const imageDescription = `Product image for ${product.name}`;
+
+        //         try {
+        //             await embeddingService.embedImage(
+        //                 imageId,
+        //                 imageUrls[i],
+        //                 null,
+        //                 {
+        //                     productId: product.id,
+        //                     imageIndex: i,
+        //                     name: product.name,
+        //                     componentType: product.componentType
+        //                 }
+        //             );
+        //         } catch (error) {
+        //             console.warn(`Failed to embed image ${i} for product ${product.id}:`, error);
+        //         }
+        //     }
+        // }
     } catch (error) {
         console.error('Error updating embeddings for product:', product.id, error);
     }
@@ -243,9 +271,27 @@ class controllerProducts {
 
         await product.destroy();
 
-        embeddingService.index.deleteMany({
-            productId: { $eq: `${id}}` }
-        })
+        // Clean up embeddings from Pinecone
+        try {
+            // Delete CLIP embedding
+            await embeddingService.index.deleteOne(`${id}_clip`);
+
+            // Delete traditional text embedding
+            //await embeddingService.index.deleteOne(id);
+
+            // Delete image embeddings (if any)
+            // Note: This is a simplified approach. In production, you might want to
+            // query for all embeddings with this productId and delete them
+            // for (let i = 0; i < 10; i++) { // Assuming max 10 images per product
+            //     try {
+            //         await embeddingService.index.deleteOne(`${id}_image_${i}`);
+            //     } catch (deleteError) {
+            //         // Ignore errors for non-existent embeddings
+            //     }
+            // }
+        } catch (embeddingDeleteError) {
+            console.warn(`Failed to delete embeddings for product ${id}:`, embeddingDeleteError);
+        }
 
         new OK({
             message: 'Delete product successfully',
@@ -800,7 +846,69 @@ class controllerProducts {
     }
 
     async generateProductDataFromImages(req, res) {
+        try {
+            const { imagesData } = req.body;
 
+            // Validate input
+            if (!imagesData || !Array.isArray(imagesData) || imagesData.length === 0) {
+                throw new BadRequestError('Images data array is required and must not be empty');
+            }
+
+            // Validate that all items are base64 data URLs
+            const invalidImages = imagesData.filter(img =>
+                typeof img !== 'string' || !img.startsWith('data:image/')
+            );
+            if (invalidImages.length > 0) {
+                throw new BadRequestError('All images must be valid base64 data URLs');
+            }
+
+            // Get available categories from database
+            const categories = await modelCategory.findAll({
+                attributes: ['id', 'name']
+            });
+            const categoryNames = categories.map(cat => cat.name);
+
+            // Define available product types based on componentType enum
+            const productTypes = [
+                'cpu', 'mainboard', 'ram', 'hdd', 'ssd', 'vga',
+                'power', 'cooler', 'case', 'monitor', 'keyboard',
+                'mouse', 'headset', 'pc'
+            ];
+
+            // Generate product data using embedding service
+            const productData = await embeddingService.generateProductDataFromImages(
+                imagesData,
+                productTypes,
+                categoryNames
+            );
+
+            // Find matching category ID for the generated category name
+            const matchingCategory = categories.find(cat =>
+                cat.name.toLowerCase() === productData.category.toLowerCase()
+            );
+
+            // Enhance response with category ID if found
+            const enhancedProductData = {
+                ...productData,
+                categoryId: matchingCategory ? matchingCategory.id : null,
+                availableCategories: categories,
+                availableProductTypes: productTypes
+            };
+
+            new OK({
+                message: 'Product data generated successfully from images using AI vision',
+                metadata: enhancedProductData
+            }).send(res);
+
+        } catch (error) {
+            console.error('Error generating product data from images:', error);
+
+            if (error instanceof BadRequestError) {
+                throw error;
+            }
+
+            throw new BadRequestError(`Failed to generate product data: ${error.message}`);
+        }
     }
 }
 

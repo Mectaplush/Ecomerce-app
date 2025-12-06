@@ -12,11 +12,174 @@ class MultimodalEmbeddingService {
       modelName: "text-embedding-3-small", // Cheaper option for starter plan
     });
 
-    if (!process.env.OPEN_API_KEY) {
-      throw new Error("ApiKey not defined")
-    }
+    this.clipApiUrl = 'https://api-inference.router/models/openai/clip-vit-base-patch32';
+    this.huggingFaceKey = process.env.HUGGINGFACE_API_KEY;
 
     this.index = pinecone.index(process.env.PINECONE_INDEX_NAME);
+  }
+
+  /**
+   * Create CLIP embedding for text - same vector space as images
+   * @param {string} text 
+   * @returns {Promise<number[]>} CLIP embedding vector
+   */
+  async embedTextWithCLIP(text) {
+    try {
+      const response = await fetch(this.clipApiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.huggingFaceKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          inputs: text,
+          options: { wait_for_model: true }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`CLIP API error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('CLIP text embedding error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create CLIP embedding for image - same vector space as text
+   * @param {string|Buffer} imageData - Image URL or buffer
+   * @returns {Promise<number[]>} CLIP embedding vector
+   */
+  async embedImageWithCLIP(imageData) {
+    try {
+      let imageBuffer;
+
+      if (typeof imageData === 'string') {
+        igeData.startsWith('data:image/')) {
+          // Handle base64 data URL
+          const base64Data = imageData.split(',')[1];
+          imageBuffer = Buffer.from(base64Data, 'base64');
+        } else {
+          // Handle regular URL
+          const imageResponse = await fetch(imageData);
+          if (!imageResponse.ok) {
+            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+          }
+          imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+        }
+      } else {
+        imageBuffer = imageData;
+      }
+
+      const response = await fetch(this.clipApiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.huggingFaceKey}`,
+          'Content-Type': 'image/jpeg'
+        },
+        body: imageBuffer
+      });
+
+      if (!response.ok) {
+        throw new Error(`CLIP image API error: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('CLIP image embedding error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create multimodal product embedding using CLIP
+   * @param {Object} product - Product data
+   * @returns {Promise<string>} Embedding record ID
+   */
+  async embedProductWithCLIP(product) {
+    try {
+      const embeddings = [];
+      const weights = [];
+
+      // 1. Create text embedding with CLIP
+      const productText = `${product.name} ${product.description} ${product.componentType}`;
+      const textEmbedding = await this.embedTextWithCLIP(productText);
+      embeddings.push(textEmbedding);
+      weights.push(0.6); // Higher weight for text
+
+      // 2. Create image embeddings with CLIP if images exist
+      if (product.images) {
+        const imageUrls = product.images.split(',').map(url => url.trim());
+
+        for (const imageUrl of imageUrls.slice(0, 3)) { // Limit to 3 images
+          try {
+            conEmbedding = await this.embedImageWithCLIP(imageUrl);
+            embeddings.push(imageEmbedding);
+            weights.push(0.4 / Math.min(imageUrls.length, 3)); // Distribute weight among images
+          } catch (error) {
+            console.warn(`Failed to embed image ${imageUrl}:`, error);
+          }
+        }
+      }
+
+      // 3. Combine embeddings using weighted average
+      const combinedEmbedding = this.weightedAverageEmbeddings(embeddings, weights);
+
+      // 4. Store in Pinecone with CLIP metadata
+      const record = {
+        id: `${product.id}_clip`,
+        values: combinedEmbedding,
+        metadata: {
+          type: 'multimodal_clip',
+          productId: product.id,
+          name: product.name,
+          price: product.price,
+          componentType: product.componentType,
+          categoryId: product.categoryId,
+          hasImages: !!product.images,
+          imageCount: product.images ? product.images.split(',').length : 0,
+          embeddingMethod: 'clip',
+          timestamp: new Date().toISOString()
+        }
+      };
+
+      await this.index.upsert([record]);
+      return record.id;
+
+    } catch (error) {
+      console.error('CLIP product embedding error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Calculate weighted average of multiple embeddings
+   * @param {number[][]} embeddings - Array of embedding vectors
+   * @param {number[]} weights - Corresponding weights
+   * @returns {number[]} Combined embedding vector
+   */
+  weightedAverageEmbeddings(embeddings, weights) {
+    if (!embeddings || embeddings.length === 0) {
+      throw new Error('No embeddings provided');
+    }
+
+    const dimensions = embeddings[0].length;
+    const result = new Array(dimensions).fill(0);
+    const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    for (let i = 0; i < embeddings.length; i++) {
+      const weight = weights[i] / totalWeight;
+      for (let j = 0; j < dimensions; j++) {
+        result[j] += embeddings[i][j] * weight;
+      }
+    }
+
+    return result;
   }
 
   /** 
@@ -141,71 +304,177 @@ class MultimodalEmbeddingService {
   }
 
   /**
-   * TODO
-   * Generate product data from multiple images urls
-   * @param {string[]} imageUrls 
-   * @param {Set<string>} productTypes
-   * @param {Set<string>} categories
-   * @returns {
-   *  {
+   * Generate product data from multiple base64 image data
+   * @param {string[]} imagesData - Array of base64 data URLs
+   * @param {Set<string>|string[]} componentTypes
+   * @param {Set<string>|string[]} categories
+   * @returns {Promise<{
    *    name: string,
    *    description: string,
    *    category: string,
-   *    productType: string,
-   *  }
-   * }
+   *    componentType: string,
+   *    cpu?: string,
+   *    mainboard?: string,
+   *    ram?: string,
+   *    storage?: string,
+   *    gpu?: string,
+   *    powerSupply?: string,
+   *    case?: string,
+   *    cooler?: string
+   * }>}
    */
-  async generateProductDataFromImages(imageUrls, productTypes, categories) {
+  async generateProductDataFromImages(imagesData, componentTypes, categories) {
     try {
-      // Fetch image data from URL
-      const imageResponse = await fetch(imageUrl);
-      if (!imageResponse.ok) {
-        throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+      if (!imagesData || imagesData.length === 0) {
+        throw new Error('No image data provided');
       }
 
-      // Get image as buffer
-      const imageBuffer = await imageResponse.arrayBuffer();
-      const buffer = Buffer.from(imageBuffer);
+      // Convert Sets to Arrays for easier handling
+      const productTypesList = Array.from(componentTypes || []);
+      const categoriesList = Array.from(categories || []);
 
-      // Detect MIME type
-      const mimeType = this.detectImageMimeType(buffer);
+      // Process all images and get descriptions
+      const imageDescriptions = [];
 
-      // Convert to base64
-      const base64Image = buffer.toString('base64');
-      const dataUrl = `data:${mimeType};base64,${base64Image}`;
+      for (const imageData of imagesData) {
+        try {
+          // Validate that it's a proper data URL
+          if (!imageData.startsWith('data:image/')) {
+            console.warn('Invalid image data format:', imageData.substring(0, 50) + '...');
+            continue;
+          }
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          // Use the base64 image data directly
+          const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${this.api_key}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    {
+                      type: "text",
+                      text: "Analyze this product image and describe what you see in detail, focusing on the product type, features, and specifications."
+                    },
+                    {
+                      type: "image_url",
+                      image_url: { url: imageData }
+                    }
+                  ]
+                }
+              ],
+              max_tokens: 500
+            })
+          });
+
+          const result = await response.json();
+          if (result.choices && result.choices[0]) {
+            imageDescriptions.push(result.choices[0].message.content);
+          }
+        } catch (error) {
+          console.warn('Error processing image data:', error);
+        }
+      }
+
+      if (imageDescriptions.length === 0) {
+        throw new Error('No images could be processed successfully');
+      }
+
+      // Generate product data based on all image descriptions
+      const combinedDescription = imageDescriptions.join(' ');
+
+      const productDataResponse = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.api_key}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model: "gpt-4o-mini",
           messages: [
             {
+              role: "system",
+              content: `You are a product data generator for an e-commerce PC shop. Based on the product images provided, generate appropriate product information.
+              
+              Available categories: ${categoriesList.join(', ')}
+              Available component types: ${productTypesList.join(', ')}
+              
+              Return ONLY a valid JSON object with this exact structure:
+              {
+                "name": "Product name (concise but descriptive)",
+                "description": "Detailed product description with specifications and features",
+                "category": "One of the available categories that best matches",
+                "componentType": "One of the available component types that best matches",
+                "cpu": "CPU model/specification if this is a PC build or CPU component (optional)",
+                "mainboard": "Mainboard model/specification if this is a PC build or mainboard component (optional)",
+                "ram": "RAM specification if this is a PC build or RAM component (optional)",
+                "storage": "Storage specification if this is a PC build or storage component (optional)",
+                "gpu": "GPU specification if this is a PC build or GPU component (optional)",
+                "powerSupply": "Power supply specification if this is a PC build or PSU component (optional)",
+                "case": "Case specification if this is a PC build or case component (optional)",
+                "cooler": "Cooler specification if this is a PC build or cooler component (optional)"
+              }
+              
+              Only include the optional component fields if they are relevant to the detected product.`
+            },
+            {
               role: "user",
-              content: [
-                {
-                  type: "text",
-                  text: "Describe this image in detail for search purposes:"
-                },
-                {
-                  type: "image_url",
-                  image_url: { url: dataUrl }
-                }
-              ]
+              content: `Generate product data based on these image descriptions: ${combinedDescription}`
             }
           ],
-          max_tokens: 300
+          max_tokens: 1000,
+          temperature: 0.3
         })
       });
 
-      const result = await response.json();
-      return result.choices[0].message.content;
+      const productDataResult = await productDataResponse.json();
+
+      if (!productDataResult.choices || !productDataResult.choices[0]) {
+        throw new Error('Failed to generate product data');
+      }
+
+      let productData;
+      try {
+        productData = JSON.parse(productDataResult.choices[0].message.content);
+      } catch (parseError) {
+        // Fallback if JSON parsing fails
+        const content = productDataResult.choices[0].message.content;
+        productData = {
+          name: "Generated Product",
+          description: content,
+          category: categoriesList.length > 0 ? categoriesList[0] : "Other",
+          componentType: productTypesList.length > 0 ? productTypesList[0] : "Other"
+        };
+      }
+
+      // Validate and ensure required fields, include optional component specifications
+      const result = {
+        name: productData.name || "Generated Product",
+        description: productData.description || combinedDescription,
+        category: productData.category || (categoriesList.length > 0 ? categoriesList[0] : "Other"),
+        componentType: productData.componentType || (productTypesList.length > 0 ? productTypesList[0] : "Other")
+      };
+
+      // Add optional component specifications if they exist
+      if (productData.cpu) result.cpu = productData.cpu;
+      if (productData.mainboard) result.mainboard = productData.mainboard;
+      if (productData.ram) result.ram = productData.ram;
+      if (productData.storage) result.storage = productData.storage;
+      if (productData.gpu) result.gpu = productData.gpu;
+      if (productData.powerSupply) result.powerSupply = productData.powerSupply;
+      if (productData.case) result.case = productData.case;
+      if (productData.cooler) result.cooler = productData.cooler;
+
+      return result;
+
     } catch (error) {
-      console.error('Image description error:', error);
-      return 'Image content description unavailable';
+      console.error('Product data generation error:', error);
+      throw error;
     }
   }
 
@@ -271,6 +540,98 @@ class MultimodalEmbeddingService {
       throw error;
     }
   }
+
+  /**
+   * Multimodal search using CLIP embeddings
+   * @param {string} query - Text query
+   * @param {string} [imageData] - Optional image for visual search
+   * @param {Object} options - Search options
+   * @returns {Promise<Array>} Search results
+   */
+  async searchMultimodal(query, imageData = null, options = {}) {
+    try {
+      const {
+        topK = 10,
+        includeMetadata = true,
+        threshold = 0.7,
+        searchMethod = 'combined' // 'text', 'image', 'combined'
+      } = options;
+
+      let queryEmbedding;
+
+      if (searchMethod === 'image' && imageData) {
+        // Pure image search
+        queryEmbedding = await this.embedImageWithCLIP(imageData);
+      } else if (searchMethod === 'text') {
+        // Pure text search with CLIP
+        queryEmbedding = await this.embedTextWithCLIP(query);
+      } else if (searchMethod === 'combined' && imageData) {
+        // Combined text + image search
+        const textEmbedding = await this.embedTextWithCLIP(query);
+        const imageEmbedding = await this.embedImageWithCLIP(imageData);
+        queryEmbedding = this.weightedAverageEmbeddings(
+          [textEmbedding, imageEmbedding],
+          [0.6, 0.4]
+        );
+      } else {
+        // Fallback to text search
+        queryEmbedding = await this.embedTextWithCLIP(query);
+      }
+
+      // Search in Pinecone
+      const searchResults = await this.index.query({
+        vector: queryEmbedding,
+        topK: topK * 2, // Get more results for deduplication
+        includeMetadata,
+        filter: {
+          type: { $eq: 'multimodal_clip' } // Only search CLIP embeddings
+        }
+      });
+
+      // Filter and deduplicate results
+      const filteredResults = searchResults.matches
+        .filter(match => match.score >= threshold)
+        .slice(0, topK);
+
+      return this.deduplicateProductResults(filteredResults);
+
+    } catch (error) {
+      console.error('Multimodal search error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deduplicate search results to avoid multiple chunks from same product
+   * @param {Array} results - Search results
+   * @returns {Array} Deduplicated results
+   */
+  deduplicateProductResults(results) {
+    const seenProducts = new Set();
+    const uniqueResults = [];
+
+    for (const result of results) {
+      const productId = result.metadata?.productId;
+
+      if (productId && !seenProducts.has(productId)) {
+        seenProducts.add(productId);
+        uniquts.push({
+          id: result.id,
+          score: result.score,
+          productId: productId,
+          type: result.metadata?.type,
+          name: result.metadata?.name,
+          price: result.metadata?.price,
+          componentType: result.metadata?.componentType,
+          hasImages: result.metadata?.hasImages,
+          embeddingMethod: result.metadata?.embeddingMethod,
+          metadata: result.metadata
+        });
+      }
+    }
+
+    return uniqueResults;
+  }
 }
 
-module.exports = new MultimodalEmbeddingService();
+module.exports = ultimodalEmbeddingService();

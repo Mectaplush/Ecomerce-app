@@ -1,8 +1,10 @@
 const { Created, OK } = require('../core/success.response');
+const { BadRequestError } = require('../core/error.response');
 const chatbotModel = require('../models/chatbot.model');
 const chatbotConversationModel = require('../models/chatbotConversation.model');
 const userModel = require('../models/users.model');
 const { askQuestion, analyzeConversation } = require('../utils/Chatbot');
+const embeddingService = require('../services/embeddingService');
 
 class ChatbotController {
     async createMessager(req, res) {
@@ -251,6 +253,66 @@ class ChatbotController {
             return res.status(500).json({ message: 'Internal server error' });
         }
     }
+
+    // /**
+    //  * Multimodal search using CLIP embeddings
+    //  * Supports both text queries and image searches
+    //  */
+    // async searchMultimodal(req, res) {
+    //     try {
+    //         const { query, imageData, limit = 10 } = req.body;
+
+    //         // Validate input - at least one search type required
+    //         if (!query && !imageData) {
+    //             throw new BadRequestError('Either text query or image data is required for search');
+    //         }
+
+    //         // Validate image data format if provided
+    //         if (imageData && (typeof imageData !== 'string' || !imageData.startsWith('data:image/'))) {
+    //             throw new BadRequestError('Image data must be a valid base64 data URL');
+    //         }
+
+    //         // Perform multimodal search
+    //         const searchResults = await embeddingService.searchMultimodal({
+    //             textQuery: query,
+    //             imageData: imageData,
+    //             topK: parseInt(limit),
+    //             includeMetadata: true
+    //         });
+
+    //         // Format results for response
+    //         const formattedResults = searchResults.matches.map(match => ({
+    //             productId: match.metadata?.productId,
+    //             name: match.metadata?.name,
+    //             price: match.metadata?.price,
+    //             componentType: match.metadata?.componentType,
+    //             categoryId: match.metadata?.categoryId,
+    //             score: match.score,
+    //             searchType: match.metadata?.searchType || 'multimodal'
+    //         }));
+
+    //         new OK({
+    //             message: `Found ${formattedResults.length} products using CLIP multimodal search`,
+    //             metadata: {
+    //                 results: formattedResults,
+    //                 searchQuery: query || 'Image-based search',
+    //                 totalResults: formattedResults.length,
+    //                 searchMethod: 'CLIP multimodal embedding',
+    //                 hasImageQuery: !!imageData,
+    //                 hasTextQuery: !!query
+    //             }
+    //         }).send(res);
+
+    //     } catch (error) {
+    //         console.error('Error in multimodal search:', error);
+
+    //         if (error instanceof BadRequestError) {
+    //             throw error;
+    //         }
+
+    //         throw new BadRequestError(`Multimodal search failed: ${error.message}`);
+    //     }
+    // }
 }
 
 module.exports = new ChatbotController();
