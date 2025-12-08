@@ -18,14 +18,13 @@ class RAGChatbot {
                     try {
                         // Generate description for context
                         const description = await embeddingService.generateImageDescription(imageData);
-                        
+
                         // Perform CLIP search for each image
-                        const clipResults = await embeddingService.searchMultimodal({
-                            imageData: imageData,
+                        const clipResults = await embeddingService.searchMultimodal(question, imagesData, {
                             topK: 5,
                             includeMetadata: true
                         });
-                        
+
                         return {
                             index,
                             description,
@@ -42,22 +41,21 @@ class RAGChatbot {
                 });
 
                 const imageResults = await Promise.all(imageProcessingPromises);
-                
+
                 // Build image descriptions
-                const descriptions = imageResults.map(result => 
+                const descriptions = imageResults.map(result =>
                     `Hình ảnh ${result.index + 1}: ${result.description}`
                 );
                 imageDescriptions = `\nHình ảnh khách hàng gửi:\n${descriptions.join('\n')}`;
-                
+
                 // Combine CLIP results from all images
                 clipSearchResults = imageResults.flatMap(result => result.clipResults);
-                
+
                 // If we have both text and images, do combined multimodal search
                 if (question && question.trim()) {
                     try {
-                        const combinedSearch = await embeddingService.searchMultimodal({
-                            textQuery: question,
-                            imageData: imagesData[0], // Use first image for combined search
+                        const combinedSearch = await embeddingService.searchMultimodal(
+                            question, imagesData, {
                             topK: 8,
                             includeMetadata: true
                         });
@@ -73,7 +71,7 @@ class RAGChatbot {
             // Traditional text search (for fallback and additional context)
             if (question && question.trim()) {
                 try {
-                    const textSearchResults = await embeddingService.search(question, {
+                    const textSearchResults = await embeddingService.searchMultimodal(question, imagesData, {
                         topK: 8,
                         includeMetadata: true,
                         threshold: 0.6
@@ -88,11 +86,11 @@ class RAGChatbot {
             // Merge and deduplicate results from CLIP and traditional search
             const allResults = [...clipSearchResults, ...searchResults];
             const uniqueResults = this.deduplicateResults(allResults);
-            
+
             // Build context from merged search results
             const context = this.buildContextMultimodal(uniqueResults, clipSearchResults.length > 0);
 
-            const searchMethodInfo = clipSearchResults.length > 0 ? 
+            const searchMethodInfo = clipSearchResults.length > 0 ?
                 '\n[Hệ thống đã sử dụng AI CLIP để phân tích hình ảnh và tìm sản phẩm tương tự]' : '';
 
             const prompt = `
@@ -223,7 +221,7 @@ Hướng dẫn trả lời:
     deduplicateResults(results) {
         const seen = new Set();
         const uniqueResults = [];
-        
+
         for (const result of results) {
             const productId = result.metadata?.productId;
             if (productId && !seen.has(productId)) {
@@ -234,7 +232,7 @@ Hướng dẫn trả lời:
                 uniqueResults.push(result);
             }
         }
-        
+
         // Sort by score (highest first)
         return uniqueResults.sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 15);
     }
@@ -248,7 +246,7 @@ Hướng dẫn trả lời:
                 .join('\n');
 
             // Use RAG to understand if user is asking about products
-            const searchResults = await embeddingService.search(userMessages, {
+            const searchResults = await embeddingService.searchMultimodal(userMessages, [], {
                 topK: 5,
                 threshold: 0.4
             });
@@ -318,7 +316,7 @@ Trả lời CHÍNH XÁC 1 trong 2 từ: "interested" hoặc "spam"
     // New method to get product recommendations based on user query
     async getRecommendations(query, limit = 5) {
         try {
-            const searchResults = await embeddingService.search(query, {
+            const searchResults = await embeddingService.searchMultimodal(query, [], {
                 topK: limit * 2, // Get more to filter duplicates
                 threshold: 0.5
             });

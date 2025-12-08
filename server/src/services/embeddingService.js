@@ -2,6 +2,21 @@
 const { OpenAIEmbeddings } = require('@langchain/openai');
 const { PineconeStore } = require('@langchain/pinecone');
 const { pinecone } = require('../config/pinecone.js');
+const { AutoTokenizer, AutoProcessor,
+  CLIPTextModelWithProjection,
+  CLIPVisionModelWithProjection,
+  RawImage } = require('@xenova/transformers');
+
+async function base64ToRawImage(base64) {
+  // Remove data URL prefix if present (e.g. "data:image/png;base64,")
+  const commaIndex = base64.indexOf(',');
+  if (commaIndex !== -1) {
+    base64 = base64.slice(commaIndex + 1);
+  }
+  const buffer = Buffer.from(base64, 'base64');
+  const blob = new Blob([buffer]);
+  return await RawImage.fromBlob(blob);
+}
 
 class MultimodalEmbeddingService {
 
@@ -12,8 +27,10 @@ class MultimodalEmbeddingService {
       modelName: "text-embedding-3-small", // Cheaper option for starter plan
     });
 
-    this.clipApiUrl = 'https://api-inference.router/models/openai/clip-vit-base-patch32';
-    this.huggingFaceKey = process.env.HUGGINGFACE_API_KEY;
+    this.tokenizerTask = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
+    this.textModelTask = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
+    this.processorTask = AutoProcessor.from_pretrained('Xenova/clip-vit-base-patch32');
+    this.visionModelTask = CLIPVisionModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
 
     this.index = pinecone.index(process.env.PINECONE_INDEX_NAME);
   }
@@ -25,24 +42,9 @@ class MultimodalEmbeddingService {
    */
   async embedTextWithCLIP(text) {
     try {
-      const response = await fetch(this.clipApiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.huggingFaceKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          inputs: text,
-          options: { wait_for_model: true }
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`CLIP API error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result;
+      const textInputs = await (await this.tokenizerTask)(text, { padding: true, truncation: true });
+      const { text_embeds } = await (await this.textModelTask)(textInputs);
+      return text_embeds.data;
     } catch (error) {
       console.error('CLIP text embedding error:', error);
       throw error;
@@ -56,42 +58,63 @@ class MultimodalEmbeddingService {
    */
   async embedImageWithCLIP(imageData) {
     try {
-      let imageBuffer;
-
-      if (typeof imageData === 'string') {
-        igeData.startsWith('data:image/')) {
-          // Handle base64 data URL
-          const base64Data = imageData.split(',')[1];
-          imageBuffer = Buffer.from(base64Data, 'base64');
-        } else {
-          // Handle regular URL
-          const imageResponse = await fetch(imageData);
-          if (!imageResponse.ok) {
-            throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
-          }
-          imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+      if (typeof imageData === 'string' && (imageData.startsWith('http://') || imageData.startsWith('https://'))) {
+        const response = await fetch(imageData);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
         }
-      } else {
-        imageBuffer = imageData;
+        const buffer = await response.arrayBuffer();
+        const uint8Array = new Uint8Array(buffer);
+        const mimeType = this.detectImageMimeType(uint8Array);
+        const base64 = Buffer.from(buffer).toString('base64');
+        imageData = `data:${mimeType};base64,${base64}`;
       }
 
-      const response = await fetch(this.clipApiUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.huggingFaceKey}`,
-          'Content-Type': 'image/jpeg'
-        },
-        body: imageBuffer
-      });
-
-      if (!response.ok) {
-        throw new Error(`CLIP image API error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      return result;
+      const rawImage = await base64ToRawImage(imageData);
+      const imageInputs = await (await this.processorTask)(rawImage);
+      const { image_embeds } = await (await this.visionModelTask)(imageInputs);
+      return image_embeds.data;
     } catch (error) {
       console.error('CLIP image embedding error:', error);
+      throw error;
+    }
+  }
+
+  /**
+     * Create multimodal product embedding using CLIP
+     * @param {string} text - Text data
+     * @param {string[]} imagesData - Array of image data (base64 or URLs)
+     * @returns {Promise<number[]>} Embeddings vector
+     */
+  async embedTextAndImagesWithCLIP(text, imagesData) {
+    try {
+      const embeddings = [];
+      const weights = [];
+
+      const textEmbedding = await this.embedTextWithCLIP(text);
+      embeddings.push(textEmbedding);
+      weights.push(0.6); // Higher weight for text
+
+      // 2. Create image embeddings with CLIP if images exist
+      if (imagesData && imagesData.length > 0) {
+        const imageUrls = imagesData;
+        for (const imageUrl of imageUrls.slice(0, 3)) { // Limit to 3 images
+          try {
+            const imageEmbedding = await this.embedImageWithCLIP(imageUrl);
+            embeddings.push(imageEmbedding);
+            weights.push(0.4 / Math.min(imageUrls.length, 3)); // Distribute weight among images
+          } catch (error) {
+            console.warn(`Failed to embed image ${imageUrl}:`, error);
+          }
+        }
+      }
+
+      // 3. Combine embeddings using weighted average
+      const combinedEmbedding = this.weightedAverageEmbeddings(embeddings, weights);
+      return combinedEmbedding;
+    }
+    catch (error) {
+      console.error('CLIP product embedding error:', error);
       throw error;
     }
   }
@@ -108,27 +131,10 @@ class MultimodalEmbeddingService {
 
       // 1. Create text embedding with CLIP
       const productText = `${product.name} ${product.description} ${product.componentType}`;
-      const textEmbedding = await this.embedTextWithCLIP(productText);
-      embeddings.push(textEmbedding);
-      weights.push(0.6); // Higher weight for text
-
-      // 2. Create image embeddings with CLIP if images exist
-      if (product.images) {
-        const imageUrls = product.images.split(',').map(url => url.trim());
-
-        for (const imageUrl of imageUrls.slice(0, 3)) { // Limit to 3 images
-          try {
-            conEmbedding = await this.embedImageWithCLIP(imageUrl);
-            embeddings.push(imageEmbedding);
-            weights.push(0.4 / Math.min(imageUrls.length, 3)); // Distribute weight among images
-          } catch (error) {
-            console.warn(`Failed to embed image ${imageUrl}:`, error);
-          }
-        }
-      }
-
-      // 3. Combine embeddings using weighted average
-      const combinedEmbedding = this.weightedAverageEmbeddings(embeddings, weights);
+      const combinedEmbedding = await this.embedTextAndImagesWithCLIP(
+        productText,
+        product.images ?? []
+      );
 
       // 4. Store in Pinecone with CLIP metadata
       const record = {
@@ -544,39 +550,19 @@ class MultimodalEmbeddingService {
   /**
    * Multimodal search using CLIP embeddings
    * @param {string} query - Text query
-   * @param {string} [imageData] - Optional image for visual search
+   * @param {string[]} [imagesData] - Optional image for visual search
    * @param {Object} options - Search options
    * @returns {Promise<Array>} Search results
    */
-  async searchMultimodal(query, imageData = null, options = {}) {
+  async searchMultimodal(query, imagesData = [], options = {}) {
     try {
       const {
         topK = 10,
         includeMetadata = true,
         threshold = 0.7,
-        searchMethod = 'combined' // 'text', 'image', 'combined'
       } = options;
 
-      let queryEmbedding;
-
-      if (searchMethod === 'image' && imageData) {
-        // Pure image search
-        queryEmbedding = await this.embedImageWithCLIP(imageData);
-      } else if (searchMethod === 'text') {
-        // Pure text search with CLIP
-        queryEmbedding = await this.embedTextWithCLIP(query);
-      } else if (searchMethod === 'combined' && imageData) {
-        // Combined text + image search
-        const textEmbedding = await this.embedTextWithCLIP(query);
-        const imageEmbedding = await this.embedImageWithCLIP(imageData);
-        queryEmbedding = this.weightedAverageEmbeddings(
-          [textEmbedding, imageEmbedding],
-          [0.6, 0.4]
-        );
-      } else {
-        // Fallback to text search
-        queryEmbedding = await this.embedTextWithCLIP(query);
-      }
+      let queryEmbedding = await this.embedTextAndImagesWithCLIP(query, imagesData);
 
       // Search in Pinecone
       const searchResults = await this.index.query({
@@ -615,7 +601,7 @@ class MultimodalEmbeddingService {
 
       if (productId && !seenProducts.has(productId)) {
         seenProducts.add(productId);
-        uniquts.push({
+        uniqueResults.push({
           id: result.id,
           score: result.score,
           productId: productId,
@@ -634,4 +620,4 @@ class MultimodalEmbeddingService {
   }
 }
 
-module.exports = ultimodalEmbeddingService();
+module.exports = new MultimodalEmbeddingService();

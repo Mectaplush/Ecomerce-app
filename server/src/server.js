@@ -33,12 +33,11 @@ app.use((req, res, next) => {
     const contentLength = req.headers['content-length'];
     if (contentLength) {
         const sizeInMB = (parseInt(contentLength) / 1024 / 1024).toFixed(2);
-        if (sizeInMB > 10) { // Log requests larger than 10MB
+        if (sizeInMB > 10) {
             console.log(`Large request detected: ${req.method} ${req.url} - Size: ${sizeInMB}MB`);
         }
     }
 
-    // Set request timeout to 5 minutes for large multimodal requests
     req.setTimeout(300000, () => {
         const err = new Error('Request timeout - processing took too long');
         err.statusCode = 408;

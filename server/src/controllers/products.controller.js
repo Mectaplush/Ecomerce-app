@@ -27,7 +27,7 @@ async function createProductEmbeddings(product) {
 
         // Create CLIP multimodal embedding (new approach)
         try {
-            await embeddingService.embedProductMultimodal(product);
+            await embeddingService.embedProductWithCLIP(product);
         } catch (clipError) {
             console.warn(`Failed to create CLIP embedding for product ${product.id}:`, clipError);
         }
@@ -84,7 +84,7 @@ async function updateProductEmbeddings(product, oldImages = null) {
             }
 
             // Create new CLIP embedding
-            await embeddingService.embedProductMultimodal(product);
+            await embeddingService.embedProductWithCLIP(product);
         } catch (clipError) {
             console.warn(`Failed to update CLIP embedding for product ${product.id}:`, clipError);
         }
