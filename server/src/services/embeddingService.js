@@ -530,8 +530,10 @@ class MultimodalEmbeddingService {
 
       // Filter by similarity threshold
       const filteredResults = searchResults.matches.filter(
-        match => match.score <= threshold
+        match => match.score <= threshold || true
       );
+
+      console.log('results:', filteredResults);
 
       return filteredResults.map(match => ({
         id: match.id,
@@ -570,13 +572,13 @@ class MultimodalEmbeddingService {
         topK: topK * 2, // Get more results for deduplication
         includeMetadata,
         filter: {
-          type: { $eq: 'multimodal_clip' } // Only search CLIP embeddings
+          type: { $eq: 'multimodal_clip' }
         }
       });
 
       // Filter and deduplicate results
       const filteredResults = searchResults.matches
-        .filter(match => match.score >= threshold)
+        .filter(match => match.score <= threshold || true)
         .slice(0, topK);
 
       return this.deduplicateProductResults(filteredResults);

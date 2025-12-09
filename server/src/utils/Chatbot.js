@@ -88,7 +88,7 @@ class RAGChatbot {
             const uniqueResults = this.deduplicateResults(allResults);
 
             // Build context from merged search results
-            const context = this.buildContextMultimodal(uniqueResults, clipSearchResults.length > 0);
+            const context = this.buildContextMultimodal(uniqueResults, true);
 
             const searchMethodInfo = clipSearchResults.length > 0 ?
                 '\n[Hệ thống đã sử dụng AI CLIP để phân tích hình ảnh và tìm sản phẩm tương tự]' : '';
@@ -151,10 +151,6 @@ Hướng dẫn trả lời:
         }
     }
 
-    buildContext(searchResults) {
-        return this.buildContextMultimodal(searchResults, false);
-    }
-
     buildContextMultimodal(searchResults, hasClipResults = false) {
         if (searchResults.length === 0) {
             return 'Không tìm thấy sản phẩm liên quan trong cơ sở dữ liệu.';
@@ -211,7 +207,7 @@ Hướng dẫn trả lời:
 
         // Add summary of search methods used
         if (hasClipResults && clipResultsCount > 0) {
-            context = `[Tìm kiếm bằng AI CLIP: ${clipResultsCount} kết quả, Tìm kiếm văn bản: ${textResultsCount} kết quả]\n${context}`;
+            context += `[Tìm kiếm bằng AI CLIP: ${clipResultsCount} kết quả, Tìm kiếm văn bản: ${textResultsCount} kết quả]\n${context}`;
         }
 
         return context || 'Không có thông tin chi tiết về sản phẩm liên quan.';

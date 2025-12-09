@@ -204,6 +204,11 @@ export const requestGetProductById = async (id) => {
     return res.data;
 };
 
+export const requestGetSimilarProducts = async (productId, topK = 10) => {
+    const res = await request.get(`/api/similar-products/${productId}`, { params: { topK } });
+    return res.data;
+};
+
 export const requestCreateUserWatchProduct = async (data) => {
     const res = await request.post('/api/create-product-watch', data);
     return res.data;

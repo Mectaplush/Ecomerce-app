@@ -910,6 +910,95 @@ class controllerProducts {
             throw new BadRequestError(`Failed to generate product data: ${error.message}`);
         }
     }
+
+    async getSimilarProducts(req, res) {
+        try {
+            console.log('📍 getSimilarProducts called with params:', req.params);
+            console.log('📍 getSimilarProducts called with query:', req.query);
+
+            const { productId } = req.params;
+            const { topK = 5 } = req.query;
+
+            // Validate input
+            if (!productId) {
+                throw new BadRequestError('Product ID is required');
+            }
+
+            // Get the source product
+            const sourceProduct = await modelProducts.findByPk(productId, {
+                include: [{
+                    model: modelCategory,
+                    as: 'category',
+                    attributes: ['id', 'name']
+                }]
+            });
+
+            if (!sourceProduct) {
+                throw new BadRequestError('Product not found');
+            }
+
+            // Create text query from source product
+            const productText = `${sourceProduct.name} ${sourceProduct.description} ${sourceProduct.componentType}`;
+
+            // Search for similar products using CLIP embeddings
+            const searchResults = await embeddingService.searchMultimodal(productText, [], {
+                topK: parseInt(topK) + 1, // +1 to exclude the source product itself
+                includeMetadata: true,
+                threshold: 0.3 // Lower threshold to get more results
+            });
+
+            // Filter out the source product and get product IDs
+            const similarProductIds = searchResults
+                .filter(result => result.productId && result.productId !== parseInt(productId))
+                .slice(0, parseInt(topK))
+                .map(result => result.productId);
+
+            // Get detailed product information from database
+            const similarProducts = await modelProducts.findAll({
+                where: {
+                    id: similarProductIds
+                },
+                include: [{
+                    model: modelCategory,
+                    as: 'category',
+                    attributes: ['id', 'name']
+                }],
+                order: [['createdAt', 'DESC']]
+            });
+
+            // Sort products based on similarity scores
+            const sortedProducts = similarProductIds.map(id => {
+                const product = similarProducts.find(p => p.id === id);
+                const searchResult = searchResults.find(r => r.productId === id);
+                return {
+                    ...product.toJSON(),
+                    similarityScore: searchResult ? searchResult.score : 0
+                };
+            }).filter(product => product.id); // Remove any undefined products
+
+            new OK({
+                message: 'Similar products retrieved successfully',
+                metadata: {
+                    sourceProduct: {
+                        id: sourceProduct.id,
+                        name: sourceProduct.name,
+                        componentType: sourceProduct.componentType
+                    },
+                    similarProducts: sortedProducts,
+                    totalFound: sortedProducts.length
+                }
+            }).send(res);
+
+        } catch (error) {
+            console.error('Error getting similar products:', error);
+
+            if (error instanceof BadRequestError) {
+                throw error;
+            }
+
+            throw new BadRequestError(`Failed to get similar products: ${error.message}`);
+        }
+    }
 }
 
 module.exports = new controllerProducts();

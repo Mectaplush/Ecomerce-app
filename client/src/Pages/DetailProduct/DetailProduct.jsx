@@ -3,11 +3,12 @@ import classNames from 'classnames/bind';
 import Header from '../../Components/Header/Header';
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { requestAddToCart, requestCreateUserWatchProduct, requestGetProductById } from '../../config/request';
+import { requestAddToCart, requestCreateUserWatchProduct, requestGetProductById, requestGetSimilarProducts } from '../../config/request';
 import Footer from '../../Components/Footer/Footer';
 import { message, Rate } from 'antd';
 import { useStore } from '../../hooks/useStore';
 import dayjs from 'dayjs';
+import SimilarProducts from '../../Components/SimilarProducts/SimilarProducts';
 
 const cx = classNames.bind(styles);
 
@@ -199,6 +200,10 @@ function DetailProduct() {
                     ))}
                 </div>
             </div>
+            
+            {/* Similar Products Section */}
+            {products.id && <SimilarProducts productId={products.id} />}
+            
             <footer>
                 <Footer />
             </footer>
