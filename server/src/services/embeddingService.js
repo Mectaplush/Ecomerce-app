@@ -672,8 +672,10 @@ class MultimodalEmbeddingService {
 
       // Filter by similarity threshold
       const filteredResults = searchResults.matches.filter(
-        match => match.score <= threshold
+        match => match.score <= threshold || true
       );
+
+      console.log('results:', filteredResults);
 
       return filteredResults.map(match => ({
         id: match.id,

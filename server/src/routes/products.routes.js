@@ -40,4 +40,6 @@ router.post('/api/re-embed-all-products', authAdmin, asyncHandler(controllerProd
 
 router.post('/api/generate-product-data-from-images', authAdmin, asyncHandler(controllerProducts.generateProductDataFromImages))
 
+router.get('/api/similar-products/:productId', asyncHandler(controllerProducts.getSimilarProducts));
+
 module.exports = router;

@@ -116,9 +116,9 @@ ${searchMethodInfo}
 
 Câu hỏi của khách hàng: ${question || 'Khách hàng đã gửi hình ảnh để tìm sản phẩm tương tự'}
 ${
-// Moved to file so prompt can be updated at runtime
-    await fs.readFile("responseInstructions.md", "utf8")
-}
+                // Moved to file so prompt can be updated at runtime
+                await fs.readFile("responseInstructions.md", "utf8")
+                }
             `;
 
             const completion = await openai.chat.completions.create({
@@ -156,10 +156,6 @@ ${
                 hasRelevantResults: false
             };
         }
-    }
-
-    buildContext(searchResults) {
-        return this.buildContextMultimodal(searchResults, false);
     }
 
     buildContextMultimodal(searchResults, hasClipResults = false) {
