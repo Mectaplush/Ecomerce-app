@@ -6,6 +6,7 @@ const paymentsRoutes = require('./payments.routes');
 const productPreviewRoutes = require('./productPreview.routes');
 const blogsRoutes = require('./blogs.routes');
 const contactRoutes = require('./contact.routes');
+const typesenseSearchRoutes = require('./typesenseSearch.routes');
 const multer = require('multer');
 const path = require('path');
 const chatbotRoutes = require('./chatbot.routes');
@@ -113,6 +114,9 @@ function routes(app) {
 
     /// chatbot
     app.use('/api', chatbotRoutes);
+
+    //// typesense search
+    app.use('/api/typesense', typesenseSearchRoutes);
 
     app.post('/api/uploads', upload.array('images'), (req, res) => {
         const file = req.files;

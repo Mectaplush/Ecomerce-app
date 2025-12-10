@@ -8,7 +8,10 @@ const modelBuildPcCart = require('../models/buildPcCart.model');
 const modelUserWatchProduct = require('../models/userWatchProduct.model');
 const modelProductPreview = require('../models/productPreview');
 const modelUser = require('../models/users.model');
-const embeddingService = require('../services/embeddingService');
+// Use Typesense for embeddings and search
+const embeddingService = require('../services/typesenseEmbeddingService');
+// Keep original service for fallback if needed
+// const pineconeEmbeddingService = require('../services/embeddingService');
 
 /**
      * Helper function to create embeddings for a product
@@ -76,12 +79,8 @@ async function updateProductEmbeddings(product, oldImages = null) {
 
         // Update CLIP multimodal embedding
         try {
-            // Delete old CLIP embedding first
-            try {
-                await embeddingService.index.deleteOne(`${product.id}_clip`);
-            } catch (deleteError) {
-                console.warn(`Failed to delete old CLIP embedding for product ${product.id}:`, deleteError);
-            }
+            // Delete all old CLIP embeddings first (text, images, combined)
+            await embeddingService.deleteProductEmbeddings(product.id);
 
             // Create new CLIP embedding
             await embeddingService.embedProductWithCLIP(product);

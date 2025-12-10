@@ -1,10 +1,16 @@
 const { OpenAI } = require('openai');
-const embeddingService = require('../services/embeddingService');
+// Use Typesense for embeddings and search
+const embeddingService = require('../services/typesenseEmbeddingService');
 require('dotenv').config();
+const openAiEmbeddingService = require('../services/embeddingService');
+const fs = require('node:fs/promises');
 
 const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
 class RAGChatbot {
+    /**
+     * for each image in images, generate a description and search multimodal with original question, generated description and image 
+     */
     async askQuestion(question, imagesData) {
         try {
             let searchResults = [];
@@ -17,18 +23,20 @@ class RAGChatbot {
                 const imageProcessingPromises = imagesData.map(async (imageData, index) => {
                     try {
                         // Generate description for context
-                        const description = await embeddingService.generateImageDescription(imageData);
+                        const description = await openAiEmbeddingService.generateImageDescription(imageData);
 
                         // Perform CLIP search for each image
-                        const clipResults = await embeddingService.searchMultimodal(question, imagesData, {
+                        const clipResults = await embeddingService.searchMultimodal(`${question} ${description}`, imagesData, {
                             topK: 5,
                             includeMetadata: true
                         });
 
+                        // console.log('CLIP search: ', clipResults);
+
                         return {
                             index,
                             description,
-                            clipResults: clipResults.matches || []
+                            clipResults: clipResults || []
                         };
                     } catch (error) {
                         console.error(`Error processing image ${index + 1}:`, error);
@@ -56,11 +64,11 @@ class RAGChatbot {
                     try {
                         const combinedSearch = await embeddingService.searchMultimodal(
                             question, imagesData, {
-                            topK: 8,
+                            topK: 16,
                             includeMetadata: true
                         });
-                        if (combinedSearch.matches) {
-                            clipSearchResults = [...clipSearchResults, ...combinedSearch.matches];
+                        if (combinedSearch && combinedSearch.length > 0) {
+                            clipSearchResults = [...clipSearchResults, ...combinedSearch];
                         }
                     } catch (error) {
                         console.warn('Combined multimodal search failed:', error);
@@ -72,10 +80,11 @@ class RAGChatbot {
             if (question && question.trim()) {
                 try {
                     const textSearchResults = await embeddingService.searchMultimodal(question, imagesData, {
-                        topK: 8,
+                        topK: 16,
                         includeMetadata: true,
                         threshold: 0.6
                     });
+                    // console.log('Text Search Results: ', textSearchResults);
                     searchResults = textSearchResults;
                 } catch (error) {
                     console.warn('Text search failed:', error);
@@ -83,12 +92,16 @@ class RAGChatbot {
                 }
             }
 
+            console.log(`RAG Chatbot: Found ${clipSearchResults.length} CLIP results and ${searchResults.length} text results`);
+
             // Merge and deduplicate results from CLIP and traditional search
             const allResults = [...clipSearchResults, ...searchResults];
             const uniqueResults = this.deduplicateResults(allResults);
 
             // Build context from merged search results
-            const context = this.buildContextMultimodal(uniqueResults, clipSearchResults.length > 0);
+            const context = this.buildContextMultimodal(uniqueResults, true);
+
+            // console.log('Context:', context);
 
             const searchMethodInfo = clipSearchResults.length > 0 ?
                 '\n[Hệ thống đã sử dụng AI CLIP để phân tích hình ảnh và tìm sản phẩm tương tự]' : '';
@@ -102,16 +115,10 @@ ${imageDescriptions}
 ${searchMethodInfo}
 
 Câu hỏi của khách hàng: ${question || 'Khách hàng đã gửi hình ảnh để tìm sản phẩm tương tự'}
-
-Hướng dẫn trả lời:
-- Trả lời dựa trên thông tin sản phẩm được cung cấp từ cả tìm kiếm văn bản và AI CLIP
-- Nếu có hình ảnh, hãy phân tích và so sánh với sản phẩm có sẵn dựa trên kết quả CLIP AI
-- Ưu tiên các sản phẩm có độ liên quan cao (từ CLIP AI hoặc tìm kiếm văn bản)
-- Nếu có sản phẩm phù hợp, hãy giới thiệu cụ thể với tên và giá
-- Nếu không có thông tin, hãy lịch sự nói rằng cần kiểm tra thêm
-- Trả lời một cách tự nhiên và thân thiện
-- Không bịa đặt thông tin không có trong dữ liệu
-- Nếu dùng CLIP AI, có thể nhắc đến rằng hệ thống đã phân tích hình ảnh để tìm sản phẩm tương tự
+${
+// Moved to file so prompt can be updated at runtime
+    await fs.readFile("responseInstructions.md", "utf8")
+}
             `;
 
             const completion = await openai.chat.completions.create({
@@ -211,7 +218,7 @@ Hướng dẫn trả lời:
 
         // Add summary of search methods used
         if (hasClipResults && clipResultsCount > 0) {
-            context = `[Tìm kiếm bằng AI CLIP: ${clipResultsCount} kết quả, Tìm kiếm văn bản: ${textResultsCount} kết quả]\n${context}`;
+            context += `[Tìm kiếm bằng AI CLIP: ${clipResultsCount} kết quả, Tìm kiếm văn bản: ${textResultsCount} kết quả]\n${context}`;
         }
 
         return context || 'Không có thông tin chi tiết về sản phẩm liên quan.';

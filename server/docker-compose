@@ -1,0 +1,32 @@
+# Docker Compose for Typesense local development
+version: '3.8'
+
+services:
+  typesense:
+    image: typesense/typesense:0.25.2
+    restart: unless-stopped
+    ports:
+      - "8108:8108"
+    environment:
+      TYPESENSE_DATA_DIR: /data
+      TYPESENSE_API_KEY: xyz
+      TYPESENSE_ENABLE_CORS: true
+    volumes:
+      - typesense_data:/data
+    command: '--data-dir /data --api-key=xyz --listen-port 8108 --enable-cors'
+
+volumes:
+  typesense_data:
+    driver: local
+
+# To start Typesense:
+# docker-compose -f docker-compose.typesense.yml up -d
+
+# To stop Typesense:
+# docker-compose -f docker-compose.typesense.yml down
+
+# To view logs:
+# docker-compose -f docker-compose.typesense.yml logs -f typesense
+
+# Typesense will be available at:
+# http://localhost:8108
