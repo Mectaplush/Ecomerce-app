@@ -151,9 +151,32 @@ class TypesenseEmbeddingService {
     }
 
     /**
-     * Create multimodal product embedding using CLIP and store in Typesense
-     * @param {Object} product - Product data
-     * @returns {Promise<string[]>} Array of embedding record IDs
+     * Embeds a product using CLIP (Contrastive Language-Image Pre-training) model.
+     * Creates separate embedding records for text, images, and a combined weighted average.
+     * 
+     * @async
+     * @function embedProductWithCLIP
+     * @param {Object} product - The product object to embed
+     * @param {string|number} product.id - Unique product identifier (UUID)
+     * @param {string} [product.name=''] - Product name
+     * @param {string} [product.description=''] - Product description
+     * @param {string} [product.componentType=''] - Type of component/product category
+     * @param {string|number} [product.price=0] - Product price
+     * @param {string} [product.categoryId=''] - Category identifier
+     * @param {string} [product.images] - Comma-separated list of image URLs
+     * @returns {Promise<string[]>} Array of created record IDs in Typesense
+     * @throws {Error} Throws error if embedding generation or Typesense operations fail
+     * 
+     * @description
+     * This method performs the following operations:
+     * 1. Generates text embedding from product name, description, and component type
+     * 2. Generates image embeddings for each product image (if any)
+     * 3. Creates separate Typesense records for text embedding (weight: 0.6)
+     * 4. Creates separate Typesense records for each image embedding (weight: 0.4/image_count)
+     * 5. Creates a combined embedding record using weighted average of all embeddings
+     * 
+     * Each record includes product metadata, embedding type, method, and searchable text.
+     * All embeddings are validated to ensure they are flat arrays before storage.
      */
     async embedProductWithCLIP(product) {
         try {
@@ -299,11 +322,17 @@ class TypesenseEmbeddingService {
     }
 
     /**
-     * Multimodal search using CLIP embeddings in Typesense
-     * @param {string} query - Text query
-     * @param {string[]} [imagesData] - Optional image for visual search
-     * @param {Object} options - Search options
-     * @returns {Promise<Array>} Search results
+     * Performs multimodal search combining text and image queries using CLIP embeddings
+     * @param {string} query - The text query to search for
+     * @param {Array} [imagesData=[]] - Array of image data to include in the search
+     * @param {Object} [options={}] - Search configuration options
+     * @param {number} [options.topK=10] - Maximum number of results to return
+     * @param {number} [options.threshold=0.7] - Similarity threshold for filtering results
+     * @returns {Promise<Array>} Array of search results with product information and similarity scores
+     * @throws {Error} When search operation fails or embeddings cannot be generated
+     * @description This method creates weighted embeddings from text (60%) and images (40% total),
+     * performs hybrid search using Typesense text matching with semantic context,
+     * and returns deduplicated results sorted by relevance score
      */
     async searchMultimodal(query, imagesData = [], options = {}) {
         try {
@@ -334,17 +363,77 @@ class TypesenseEmbeddingService {
 
             console.log(`Query embedding validation: length=${validatedQueryEmbedding.length}, first value type=${typeof validatedQueryEmbedding[0]}`);
 
-            // Use text-based search with semantic context from embeddings
-            // Vector search will be implemented later when Typesense vector support is properly configured
-            const hybridResults = await this.client.collections(this.embeddingsCollection)
-                .documents()
-                .search({
-                    q: query || '*',
-                    query_by: 'searchableText,name,description,componentType',
-                    filter_by: 'embeddingType:combined && embeddingMethod:clip',
-                    per_page: topK,
-                    sort_by: '_text_match:desc'
+            // Use multi-search for better performance with larger payloads
+            console.log('Performing multi-search with vector and text queries...');
+
+            const multiSearchQueries = {
+                searches: [
+                    {
+                        collection: this.embeddingsCollection,
+                        q: '*',
+                        vector_query: `embedding:(${validatedQueryEmbedding.join(',')}, k:${topK})`,
+                        filter_by: 'embeddingType:combined && embeddingMethod:clip',
+                        per_page: topK
+                    },
+                    {
+                        collection: this.embeddingsCollection,
+                        q: query || '*',
+                        query_by: 'searchableText,name,description,componentType',
+                        filter_by: 'embeddingType:combined && embeddingMethod:clip',
+                        per_page: topK,
+                        sort_by: '_text_match:desc'
+                    }
+                ]
+            };
+
+            const multiSearchResults = await this.client.multiSearch.perform(multiSearchQueries);
+            const vectorResults = multiSearchResults.results[0];
+            const textResults = multiSearchResults.results[1];
+
+            // Combine vector and text results with weighted scoring
+            const combinedResults = new Map();
+
+            // Add vector search results (70% weight)
+            vectorResults.hits?.forEach(hit => {
+                const productId = hit.document.productId;
+                combinedResults.set(productId, {
+                    ...hit.document,
+                    vectorScore: 1 - (hit.vector_distance || 0), // Convert distance to similarity
+                    textScore: 0,
+                    combinedScore: (1 - (hit.vector_distance || 0)) * 0.7
                 });
+            });
+
+            // Add text search results (30% weight)
+            textResults.hits?.forEach(hit => {
+                const productId = hit.document.productId;
+                const textScore = (hit.text_match || 0) / 100; // Convert to 0-1 scale
+
+                if (combinedResults.has(productId)) {
+                    const existing = combinedResults.get(productId);
+                    existing.textScore = textScore;
+                    existing.combinedScore += textScore * 0.3;
+                } else {
+                    combinedResults.set(productId, {
+                        ...hit.document,
+                        vectorScore: 0,
+                        textScore: textScore,
+                        combinedScore: textScore * 0.3
+                    });
+                }
+            });
+
+            // Sort by combined score and convert to array
+            const hybridResults = {
+                hits: Array.from(combinedResults.values())
+                    .sort((a, b) => b.combinedScore - a.combinedScore)
+                    .slice(0, topK)
+                    .map(result => ({
+                        document: result,
+                        text_match: result.combinedScore * 100, // Convert back for compatibility
+                        vector_distance: 1 - result.vectorScore
+                    }))
+            };
 
             // Convert Typesense results to our format
             const results = hybridResults.hits?.map(hit => ({
@@ -357,7 +446,9 @@ class TypesenseEmbeddingService {
                 hasImages: hit.document.hasImages,
                 imageCount: hit.document.imageCount,
                 embeddingMethod: hit.document.embeddingMethod,
-                score: hit.text_match / 100, // Convert to 0-1 scale
+                score: hit.document.combinedScore || (hit.text_match / 100), // Use combined score or fallback
+                vectorScore: hit.document.vectorScore || 0,
+                textScore: hit.document.textScore || 0,
                 metadata: hit.document
             })) || [];
 
@@ -365,7 +456,155 @@ class TypesenseEmbeddingService {
 
         } catch (error) {
             console.error('Multimodal search error:', error);
+
+            // Fallback to text-only search if vector search or multi-search fails
+            if (error.message && (error.message.includes('vector_query') || error.message.includes('multi_search'))) {
+                console.log('Multi-search failed, falling back to single text-only search...');
+
+                try {
+                    const fallbackResults = await this.client.collections(this.embeddingsCollection)
+                        .documents()
+                        .search({
+                            q: query || '*',
+                            query_by: 'searchableText,name,description,componentType',
+                            filter_by: 'embeddingType:combined && embeddingMethod:clip',
+                            per_page: topK,
+                            sort_by: '_text_match:desc'
+                        });
+
+                    const results = fallbackResults.hits?.map(hit => ({
+                        productId: hit.document.productId,
+                        name: hit.document.name,
+                        description: hit.document.description,
+                        price: hit.document.price,
+                        componentType: hit.document.componentType,
+                        categoryId: hit.document.categoryId,
+                        hasImages: hit.document.hasImages,
+                        imageCount: hit.document.imageCount,
+                        embeddingMethod: hit.document.embeddingMethod,
+                        score: hit.text_match / 100,
+                        vectorScore: 0,
+                        textScore: hit.text_match / 100,
+                        metadata: hit.document
+                    })) || [];
+
+                    return this.deduplicateProductResults(results);
+
+                } catch (fallbackError) {
+                    console.error('Fallback search also failed:', fallbackError);
+                    throw fallbackError;
+                }
+            }
+
             throw error;
+        }
+    }
+
+    /**
+     * Similarity search by document ID - will not return queried id:
+     * https://typesense.org/docs/29.0/api/vector-search.html#querying-for-similar-documents
+     * @param {string} productId 
+     * @param {*} options 
+     * @returns {Promise<Array>}
+     */
+    async similaritySearchById(productId, options = {}) {
+        try {
+            return await this.similaritySearch([], { ...options, id: productId + "_clip_combined" });
+        } catch (error) {
+            console.error('Similarity search by ID error:', error);
+        }
+    }
+
+    /**
+     * Similarity search using CLIP embeddings in Typesense with multi-search support
+     * @param {number[]} queryEmbedding 
+     * @param {*} options 
+     * @returns {Promise<Array>}
+     */
+    async similaritySearch(queryEmbedding, options = {}) {
+        try {
+            const {
+                topK = 10,
+                threshold = 0.7,
+                filters = {},
+                id = null,
+            } = options;
+
+            const largerTopK = topK * 5; // Fetch more to account for deduplication
+
+            // Prepare filter string
+            const filterBy = Object.entries(filters)
+                .map(([key, value]) => {
+                    // Handle special operators like !== for exclusion
+                    if (value.startsWith('!=')) {
+                        return `${key}:${value}`;
+                    }
+                    return `${key}:${value}`;
+                })
+                .join(' && ');
+
+            // Use multi-search for better performance with large embeddings
+            const multiSearchQueries = {
+                searches: [
+                    {
+                        collection: this.embeddingsCollection,
+                        q: "*",
+                        filter_by: filterBy || undefined,
+                        per_page: topK,
+                        exclude_fields: 'embedding',
+                        vector_query: `embedding:([${queryEmbedding.join(',')}], k:${largerTopK}, threshold:${threshold} ${id ? ',id: ' + id : ''})`
+                    }
+                ]
+            };
+
+            // Clean up undefined fields
+            multiSearchQueries.searches[0] = Object.fromEntries(
+                Object.entries(multiSearchQueries.searches[0]).filter(([_, v]) => v !== undefined)
+            );
+
+            const multiSearchResults = await this.client.multiSearch.perform(multiSearchQueries);
+            const results = multiSearchResults.results[0];
+
+            const mappedResults = results.hits?.map(hit => hit.document) || [];
+
+            return this.deduplicateProductResults(mappedResults).slice(0, topK);
+        } catch (error) {
+            console.error('Similarity search error:', error);
+
+            // Fallback to single search if multi-search fails
+            try {
+                const fallbackFilterBy = Object.entries(filters)
+                    .map(([key, value]) => {
+                        if (value.startsWith('!=')) {
+                            return `${key}:${value}`;
+                        }
+                        return `${key}:${value}`;
+                    })
+                    .join(' && ');
+
+                const searchParams = {
+                    q: "*",
+                    filter_by: fallbackFilterBy || undefined,
+                    per_page: topK,
+                    exclude_fields: 'embedding',
+                    vector_query: `embedding:([${queryEmbedding.join(',')}], k:${topK * 5}, threshold:${threshold} ${id ? ',id: ' + id : ''})`
+                };
+
+                // Clean up undefined fields
+                searchParams = Object.fromEntries(
+                    Object.entries(searchParams).filter(([_, v]) => v !== undefined)
+                );
+
+                const results = await this.client.collections(this.embeddingsCollection)
+                    .documents()
+                    .search(searchParams);
+
+                const mappedResults = results.hits?.map(hit => hit.document) || [];
+                return this.deduplicateProductResults(mappedResults).slice(0, topK);
+            } catch (fallbackError) {
+                console.error('Fallback similarity search also failed:', fallbackError);
+                throw fallbackError;
+            }
         }
     }
 
