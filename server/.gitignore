@@ -8,6 +8,10 @@ pnpm-debug.log*
 lerna-debug.log*
 
 src/uploads
+/data
+/uploads
+src/scripts/phongVuScrape
+docDrafts/
 
 node_modules
 dist

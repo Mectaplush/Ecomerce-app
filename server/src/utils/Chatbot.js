@@ -5,17 +5,80 @@ require('dotenv').config();
 const openAiEmbeddingService = require('../services/embeddingService');
 const fs = require('node:fs/promises');
 
+/**
+ * @type {import('../services/policySearchService').PolicySearchService|null}
+ */
+let policySearchService;
+try {
+    policySearchService = require('../services/policySearchService');
+    console.log('Policy search service loaded successfully');
+} catch (error) {
+    console.warn('Policy search service not found, policy search will be disabled:', error.message);
+    policySearchService = null;
+}
+
 const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
 class RAGChatbot {
     /**
      * for each image in images, generate a description and search multimodal with original question, generated description and image 
+     * @param {string} question - User's question
+     * @param {Array} imagesData - Array of image data
+     * @param {Array} conversationHistory - Previous messages for context (default: [])
      */
-    async askQuestion(question, imagesData) {
+    async askQuestion(question, imagesData, conversationHistory = []) {
         try {
             let searchResults = [];
             let imageDescriptions = '';
             let clipSearchResults = [];
+            let policyResults = [];
+            let reformulatedQuery = question;
+
+            // Step 1: Reformulate the query for better search using conversation history
+            if (question && question.trim()) {
+                reformulatedQuery = await this.reformulateQuery(question, conversationHistory);
+                console.log(`Original query: ${question}`);
+                console.log(`Reformulated query: ${reformulatedQuery}`);
+            }
+
+            // Step 2: Check if this is a policy-related question and search policies
+            if (question) {
+                try {
+                    const isPolicyQuestion = await this.isPolicyQuestion(question, conversationHistory);
+                    if (isPolicyQuestion) {
+                        // Try to use the policy search service
+                        if (policySearchService) {
+                            // Try different possible method names for policy search
+                            if (typeof policySearchService.intelligentPolicySearch === 'function') {
+                                policyResults = await policySearchService.intelligentPolicySearch(question);
+                            } else if (typeof policySearchService.searchPolicies === 'function') {
+                                policyResults = await policySearchService.searchPolicies(question);
+                            } else if (typeof policySearchService.search === 'function') {
+                                policyResults = await policySearchService.search(question);
+                            } else {
+                                console.warn('No compatible policy search method found, using fallback');
+                                policyResults = await this.fallbackPolicySearch(question);
+                            }
+                        } else {
+                            // Use fallback policy search
+                            console.log('Using fallback policy search');
+                            policyResults = await this.fallbackPolicySearch(question);
+                        }
+                        console.log(`Found ${policyResults.length} policy results`);
+                    }
+                } catch (error) {
+                    console.warn('Policy search failed, using fallback:', error.message);
+                    try {
+                        const isPolicyQuestion = await this.isPolicyQuestion(question, conversationHistory);
+                        if (isPolicyQuestion) {
+                            policyResults = await this.fallbackPolicySearch(question);
+                        }
+                    } catch (fallbackError) {
+                        console.error('Fallback policy search also failed:', fallbackError.message);
+                        policyResults = [];
+                    }
+                }
+            }
 
             // Enhanced multimodal search strategy
             if (imagesData && imagesData.length > 0) {
@@ -60,10 +123,10 @@ class RAGChatbot {
                 clipSearchResults = imageResults.flatMap(result => result.clipResults);
 
                 // If we have both text and images, do combined multimodal search
-                if (question && question.trim()) {
+                if (reformulatedQuery && reformulatedQuery.trim()) {
                     try {
                         const combinedSearch = await embeddingService.searchMultimodal(
-                            question, imagesData, {
+                            reformulatedQuery, imagesData, {
                             topK: 16,
                             includeMetadata: true
                         });
@@ -76,10 +139,10 @@ class RAGChatbot {
                 }
             }
 
-            // Traditional text search (for fallback and additional context)
-            if (question && question.trim()) {
+            // Step 3: Traditional text search using reformulated query (for fallback and additional context)
+            if (reformulatedQuery && reformulatedQuery.trim()) {
                 try {
-                    const textSearchResults = await embeddingService.searchMultimodal(question, imagesData, {
+                    const textSearchResults = await embeddingService.searchMultimodal(reformulatedQuery, imagesData, {
                         topK: 16,
                         includeMetadata: true,
                         threshold: 0.6
@@ -92,7 +155,7 @@ class RAGChatbot {
                 }
             }
 
-            console.log(`RAG Chatbot: Found ${clipSearchResults.length} CLIP results and ${searchResults.length} text results`);
+            console.log(`RAG Chatbot: Found ${clipSearchResults.length} CLIP results, ${searchResults.length} text results, and ${policyResults.length} policy results`);
 
             // Merge and deduplicate results from CLIP and traditional search
             const allResults = [...clipSearchResults, ...searchResults];
@@ -100,6 +163,10 @@ class RAGChatbot {
 
             // Build context from merged search results
             const context = this.buildContextMultimodal(uniqueResults, true);
+            const policyContext = this.buildPolicyContext(policyResults);
+
+            // Build conversation history context (last 6 messages)
+            const conversationContext = this.buildConversationContext(conversationHistory);
 
             // console.log('Context:', context);
 
@@ -109,15 +176,19 @@ class RAGChatbot {
             const prompt = `
 Bạn là một trợ lý bán hàng chuyên nghiệp của cửa hàng máy tính với khả năng hiểu cả văn bản và hình ảnh.
 
+${conversationContext}
+
 Thông tin sản phẩm liên quan:
 ${context}
+${policyContext}
 ${imageDescriptions}
 ${searchMethodInfo}
 
-Câu hỏi của khách hàng: ${question || 'Khách hàng đã gửi hình ảnh để tìm sản phẩm tương tự'}
+Câu hỏi gốc của khách hàng: ${question || 'Khách hàng đã gửi hình ảnh để tìm sản phẩm tương tự'}
+Truy vấn đã được tối ưu: ${reformulatedQuery}
 ${
                 // Moved to file so prompt can be updated at runtime
-                await fs.readFile("responseInstructions.md", "utf8")
+                await fs.readFile("responseInstructions.md", "utf8").catch(() => 'Hãy trả lời một cách chuyên nghiệp và hữu ích.')
                 }
             `;
 
@@ -139,10 +210,13 @@ ${
             return {
                 answer,
                 sources: uniqueResults.slice(0, 8), // Return top 8 relevant products from both searches
-                hasRelevantResults: uniqueResults.length > 0,
+                policyResults: policyResults.slice(0, 3), // Return top 3 policy results
+                hasRelevantResults: uniqueResults.length > 0 || policyResults.length > 0,
+                reformulatedQuery,
                 searchMethods: {
                     clipResults: clipSearchResults.length,
                     textResults: searchResults.length,
+                    policyResults: policyResults.length,
                     combinedResults: uniqueResults.length,
                     hasImages: imagesData && imagesData.length > 0
                 }
@@ -218,6 +292,180 @@ ${
         }
 
         return context || 'Không có thông tin chi tiết về sản phẩm liên quan.';
+    }
+
+    // Method to reformulate user query for better search
+    async reformulateQuery(question, conversationHistory = []) {
+        try {
+            if (!question || question.trim().length < 3) {
+                return question;
+            }
+
+            // Build recent conversation context (last 4 messages)
+            const recentHistory = conversationHistory
+                .slice(-4)
+                .map(msg => `${msg.sender}: ${msg.content}`)
+                .join('\n');
+
+            const prompt = `
+Bạn là chuyên gia tối ưu hóa tìm kiếm. Hãy chuyển đổi câu hỏi của khách hàng thành một truy vấn tìm kiếm tốt hơn cho cơ sở dữ liệu sản phẩm máy tính.
+
+Lịch sử hội thoại gần đây:
+${recentHistory}
+
+Câu hỏi hiện tại: ${question}
+
+Quy tắc tối ưu:
+1. Trích xuất từ khóa chính về sản phẩm, thương hiệu, thông số kỹ thuật
+2. Bổ sung thông tin từ lịch sử hội thoại nếu có liên quan
+3. Loại bỏ từ dừng và câu hỏi chung chung
+4. Tập trung vào thuật ngữ kỹ thuật và tên sản phẩm
+5. Giữ nguyên tiếng Việt, không dịch sang tiếng Anh
+
+Ví dụ:
+- "Có cái nào rẻ hơn không?" → "sản phẩm giá rẻ thay thế tương tự"
+- "Cấu hình này chơi game được không?" → "card đồ họa CPU RAM gaming performance"
+
+Chỉ trả về truy vấn được tối ưu, không giải thích:`;
+
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Bạn là chuyên gia tối ưu truy vấn tìm kiếm. Chỉ trả về truy vấn được tối ưu.'
+                    },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.2,
+                max_tokens: 100
+            });
+
+            const reformulated = completion.choices[0].message.content.trim();
+            return reformulated.length > 0 ? reformulated : question;
+
+        } catch (error) {
+            console.error('Error reformulating query:', error);
+            return question;
+        }
+    }
+
+    // Method to detect if question is policy-related
+    async isPolicyQuestion(question, conversationHistory = []) {
+        try {
+            if (!question) return false;
+
+            // Simple keyword detection first
+            const policyKeywords = [
+                'chính sách', 'quy định', 'điều khoản', 'bảo hành', 'đổi trả', 'hoàn tiền',
+                'giao hàng', 'vận chuyển', 'thanh toán', 'bảo mật', 'hỗ trợ', 'liên hệ',
+                'warranty', 'return', 'refund', 'shipping', 'policy', 'terms', 'support'
+            ];
+
+            const lowerQuestion = question.toLowerCase();
+            const hasKeywords = policyKeywords.some(keyword => lowerQuestion.includes(keyword));
+
+            if (hasKeywords) return true;
+
+            // Use AI for more sophisticated detection
+            const recentHistory = conversationHistory
+                .slice(-3)
+                .map(msg => `${msg.sender}: ${msg.content}`)
+                .join('\n');
+
+            const prompt = `
+Phân tích xem câu hỏi có liên quan đến chính sách, quy định, dịch vụ của cửa hàng không?
+
+Lịch sử: ${recentHistory}
+Câu hỏi: ${question}
+
+Chính sách bao gồm: bảo hành, đổi trả, hoàn tiền, giao hàng, thanh toán, hỗ trợ, điều khoản sử dụng, bảo mật.
+
+Trả lời "yes" hoặc "no":`;
+
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Phân tích câu hỏi về chính sách. Chỉ trả lời "yes" hoặc "no".'
+                    },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 5
+            });
+
+            return completion.choices[0].message.content.toLowerCase().includes('yes');
+
+        } catch (error) {
+            console.error('Error detecting policy question:', error);
+            return false;
+        }
+    }
+
+    // Method to build policy context
+    buildPolicyContext(policyResults) {
+        if (!policyResults || policyResults.length === 0) {
+            return '';
+        }
+
+        let context = '\n\nThông tin chính sách liên quan:\n';
+        policyResults.forEach((policy, index) => {
+            const title = policy.title || policy.section || `Chính sách ${index + 1}`;
+            const content = policy.content || policy.text || 'Không có nội dung chi tiết';
+            context += `${index + 1}. ${title}\n${content}\n\n`;
+        });
+
+        return context;
+    }
+
+    // Fallback policy search when service is not available
+    async fallbackPolicySearch(question) {
+        // Simple keyword-based policy responses
+        const lowerQuestion = question.toLowerCase();
+        const mockPolicies = [];
+
+        if (lowerQuestion.includes('bảo hành') || lowerQuestion.includes('warranty')) {
+            mockPolicies.push({
+                title: 'Chính sách bảo hành',
+                content: 'Sản phẩm được bảo hành theo chính sách của nhà sản xuất. Thời gian bảo hành từ 12-36 tháng tùy theo loại sản phẩm. Vui lòng liên hệ bộ phận hỗ trợ để được tư vấn cụ thể.'
+            });
+        }
+
+        if (lowerQuestion.includes('đổi trả') || lowerQuestion.includes('hoàn tiền') || lowerQuestion.includes('return')) {
+            mockPolicies.push({
+                title: 'Chính sách đổi trả',
+                content: 'Khách hàng có thể đổi/trả sản phẩm trong vòng 7-15 ngày kể từ ngày mua, với điều kiện sản phẩm còn nguyên vẹn, đầy đủ phụ kiện và hóa đơn mua hàng.'
+            });
+        }
+
+        if (lowerQuestion.includes('giao hàng') || lowerQuestion.includes('vận chuyển') || lowerQuestion.includes('ship')) {
+            mockPolicies.push({
+                title: 'Chính sách giao hàng',
+                content: 'Miễn phí giao hàng trong nội thành cho đơn hàng từ 500.000 VND. Thời gian giao hàng 1-3 ngày làm việc. Hỗ trợ giao hàng toàn quốc.'
+            });
+        }
+
+        return mockPolicies;
+    }
+
+    // Method to build conversation context
+    buildConversationContext(conversationHistory) {
+        if (!conversationHistory || conversationHistory.length === 0) {
+            return 'Lịch sử hội thoại: Đây là tin nhắn đầu tiên.';
+        }
+
+        // Get last 6 messages for context
+        const recentMessages = conversationHistory.slice(-6);
+        let context = 'Lịch sử hội thoại gần đây:\n';
+
+        recentMessages.forEach((msg, index) => {
+            const role = msg.sender === 'user' ? 'Khách hàng' : 'Trợ lý';
+            context += `${role}: ${msg.content}\n`;
+        });
+
+        return context;
     }
 
     // Helper method to deduplicate search results
@@ -353,9 +601,14 @@ Trả lời CHÍNH XÁC 1 trong 2 từ: "interested" hoặc "spam"
 
 const ragChatbot = new RAGChatbot();
 
-async function askQuestion(question, images) {
-    const result = await ragChatbot.askQuestion(question, images);
+async function askQuestion(question, images, conversationHistory = []) {
+    const result = await ragChatbot.askQuestion(question, images, conversationHistory);
     return result.answer;
+}
+
+// New function that returns full result with sources and metadata
+async function askQuestionWithMetadata(question, images, conversationHistory = []) {
+    return await ragChatbot.askQuestion(question, images, conversationHistory);
 }
 
 async function analyzeConversation(messages) {
@@ -365,6 +618,7 @@ async function analyzeConversation(messages) {
 // Export both old interface and new class
 module.exports = {
     askQuestion,
+    askQuestionWithMetadata,
     analyzeConversation,
     RAGChatbot: ragChatbot
 };
