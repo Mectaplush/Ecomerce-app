@@ -4,6 +4,46 @@ const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs').promises;
 
+/**
+ * Parse CSV row handling quoted fields and escaped quotes
+ * @param {string} row - CSV row to parse
+ * @returns {Array} - Array of field values
+ */
+function parseCSVRow(row) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < row.length) {
+        const char = row[i];
+
+        if (char === '"') {
+            if (inQuotes && i + 1 < row.length && row[i + 1] === '"') {
+                // Escaped quote inside quoted field
+                current += '"';
+                i += 2;
+            } else {
+                // Toggle quote state
+                inQuotes = !inQuotes;
+                i++;
+            }
+        } else if (char === ',' && !inQuotes) {
+            // Field delimiter outside quotes
+            result.push(current.trim());
+            current = '';
+            i++;
+        } else {
+            current += char;
+            i++;
+        }
+    }
+
+    // Add the last field
+    result.push(current.trim());
+    return result;
+}
+
 const modelProducts = require('../models/products.model');
 const modelCategory = require('../models/category.model');
 const modelBuildPcCart = require('../models/buildPcCart.model');
@@ -446,7 +486,7 @@ class controllerProducts {
             }
 
             // Extract header and validate required columns
-            const headers = lines[0].split(',').map(h => h.trim());
+            const headers = parseCSVRow(lines[0]);
             const requiredFields = ['name', 'price', 'description', 'images', 'categoryId', 'stock', 'componentType'];
 
             // Check if all required fields exist in headers
@@ -460,7 +500,7 @@ class controllerProducts {
 
             // Process each data row
             for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.trim());
+                const values = parseCSVRow(lines[i]);
 
                 if (values.length !== headers.length) {
                     errors.push(`Dòng ${i + 1}: Số lượng cột không khớp`);

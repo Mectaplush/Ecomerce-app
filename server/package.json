@@ -6,9 +6,6 @@
     "scripts": {
         "dev": "nodemon src/server.js",
         "devNoWatch": "node src/server.js",
-        "process-policies": "node src/scripts/processPolicies.js",
-        "test-policies": "node src/scripts/testPolicySearch.js",
-        "test-chatbot": "node src/scripts/testEnhancedChatbot.js",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [],

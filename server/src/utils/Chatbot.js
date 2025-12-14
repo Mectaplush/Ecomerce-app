@@ -5,6 +5,9 @@ require('dotenv').config();
 const openAiEmbeddingService = require('../services/embeddingService');
 const fs = require('node:fs/promises');
 
+// Import order search service
+const orderSearchService = require('../services/orderSearchService');
+
 /**
  * @type {import('../services/policySearchService').PolicySearchService|null}
  */
@@ -21,17 +24,20 @@ const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
 
 class RAGChatbot {
     /**
+     * PROMPT INJECTION!!!!
      * for each image in images, generate a description and search multimodal with original question, generated description and image 
      * @param {string} question - User's question
      * @param {Array} imagesData - Array of image data
      * @param {Array} conversationHistory - Previous messages for context (default: [])
+     * @param {string} userId - User ID for order search filtering (optional)
      */
-    async askQuestion(question, imagesData, conversationHistory = []) {
+    async askQuestion(question, imagesData, conversationHistory = [], userId = null) {
         try {
             let searchResults = [];
             let imageDescriptions = '';
             let clipSearchResults = [];
             let policyResults = [];
+            let orderResults = [];
             let reformulatedQuery = question;
 
             // Step 1: Reformulate the query for better search using conversation history
@@ -77,6 +83,20 @@ class RAGChatbot {
                         console.error('Fallback policy search also failed:', fallbackError.message);
                         policyResults = [];
                     }
+                }
+            }
+
+            // Step 3: Check if this is an order-related question and search orders
+            if (question && userId) {
+                try {
+                    const isOrderQuestion = await this.isOrderQuestion(question, conversationHistory);
+                    if (isOrderQuestion) {
+                        orderResults = orderSearchService.searchOrders(question, userId);
+                        console.log(`Found ${orderResults.length} order results`);
+                    }
+                } catch (error) {
+                    console.warn('Order search failed:', error.message);
+                    orderResults = [];
                 }
             }
 
@@ -155,7 +175,7 @@ class RAGChatbot {
                 }
             }
 
-            console.log(`RAG Chatbot: Found ${clipSearchResults.length} CLIP results, ${searchResults.length} text results, and ${policyResults.length} policy results`);
+            console.log(`RAG Chatbot: Found ${clipSearchResults.length} CLIP results, ${searchResults.length} text results, ${policyResults.length} policy results, and ${orderResults.length} order results`);
 
             // Merge and deduplicate results from CLIP and traditional search
             const allResults = [...clipSearchResults, ...searchResults];
@@ -164,6 +184,7 @@ class RAGChatbot {
             // Build context from merged search results
             const context = this.buildContextMultimodal(uniqueResults, true);
             const policyContext = this.buildPolicyContext(policyResults);
+            const orderContext = this.buildOrderContext(orderResults);
 
             // Build conversation history context (last 6 messages)
             const conversationContext = this.buildConversationContext(conversationHistory);
@@ -181,11 +202,16 @@ ${conversationContext}
 Thông tin sản phẩm liên quan:
 ${context}
 ${policyContext}
+${orderContext}
 ${imageDescriptions}
 ${searchMethodInfo}
 
 Câu hỏi gốc của khách hàng: ${question || 'Khách hàng đã gửi hình ảnh để tìm sản phẩm tương tự'}
 Truy vấn đã được tối ưu: ${reformulatedQuery}
+
+Url gốc cúa sản phẩm:
+baseUrl = ${process.env.FRONTEND_HOST || 'http://localhost:5173'}
+
 ${
                 // Moved to file so prompt can be updated at runtime
                 await fs.readFile("responseInstructions.md", "utf8").catch(() => 'Hãy trả lời một cách chuyên nghiệp và hữu ích.')
@@ -211,12 +237,14 @@ ${
                 answer,
                 sources: uniqueResults.slice(0, 8), // Return top 8 relevant products from both searches
                 policyResults: policyResults.slice(0, 3), // Return top 3 policy results
-                hasRelevantResults: uniqueResults.length > 0 || policyResults.length > 0,
+                orderResults: orderResults.slice(0, 5), // Return top 5 order results
+                hasRelevantResults: uniqueResults.length > 0 || policyResults.length > 0 || orderResults.length > 0,
                 reformulatedQuery,
                 searchMethods: {
                     clipResults: clipSearchResults.length,
                     textResults: searchResults.length,
                     policyResults: policyResults.length,
+                    orderResults: orderResults.length,
                     combinedResults: uniqueResults.length,
                     hasImages: imagesData && imagesData.length > 0
                 }
@@ -450,6 +478,96 @@ Trả lời "yes" hoặc "no":`;
         return mockPolicies;
     }
 
+    // Method to detect if question is order-related
+    async isOrderQuestion(question, conversationHistory = []) {
+        try {
+            if (!question) return false;
+
+            // Simple keyword detection first
+            const orderKeywords = [
+                'đơn hàng', 'order', 'mua', 'thanh toán', 'giao hàng', 'delivery',
+                'trạng thái', 'status', 'hủy', 'cancel', 'hoàn tiền', 'refund',
+                'cod', 'momo', 'banking', 'thẻ', 'card', 'visa', 'mastercard',
+                'pending', 'completed', 'delivered', 'cancelled', 'chờ', 'hoàn thành',
+                'đã giao', 'đã hủy', 'lịch sử', 'history', 'mua hàng', 'purchase'
+            ];
+
+            const lowerQuestion = question.toLowerCase();
+            const hasKeywords = orderKeywords.some(keyword => lowerQuestion.includes(keyword));
+
+            if (hasKeywords) return true;
+
+            // Use AI for more sophisticated detection if no obvious keywords
+            const recentHistory = conversationHistory
+                .slice(-3)
+                .map(msg => `${msg.sender}: ${msg.content}`)
+                .join('\n');
+
+            const prompt = `
+Phân tích xem câu hỏi có liên quan đến đơn hàng, lịch sử mua hàng, trạng thái đơn hàng của khách hàng không?
+
+Lịch sử: ${recentHistory}
+Câu hỏi: ${question}
+
+Đơn hàng bao gồm: trạng thái đơn hàng, lịch sử mua hàng, thanh toán, giao hàng, hủy đơn, hoàn tiền, theo dõi đơn hàng.
+
+Trả lời "yes" hoặc "no":`;
+
+            const completion = await openai.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                    {
+                        role: 'system',
+                        content: 'Phân tích câu hỏi về đơn hàng. Chỉ trả lời "yes" hoặc "no".'
+                    },
+                    { role: 'user', content: prompt }
+                ],
+                temperature: 0.1,
+                max_tokens: 5
+            });
+
+            return completion.choices[0].message.content.toLowerCase().includes('yes');
+
+        } catch (error) {
+            console.error('Error detecting order question:', error);
+            return false;
+        }
+    }
+
+    // Method to build order context
+    buildOrderContext(orderResults) {
+        if (!orderResults || orderResults.length === 0) {
+            return '';
+        }
+
+        let context = '\n\nThông tin đơn hàng của khách hàng:\n';
+        orderResults.forEach((order, index) => {
+            context += `${index + 1}. Đơn hàng #${order.orderId}\n`;
+            context += `   - Sản phẩm: ${order.productName}\n`;
+            context += `   - Số lượng: ${order.quantity}\n`;
+            context += `   - Tổng tiền: ${order.totalPrice?.toLocaleString()} VND\n`;
+            context += `   - Trạng thái: ${order.status}\n`;
+            context += `   - Phương thức thanh toán: ${order.paymentType}\n`;
+            context += `   - Người nhận: ${order.fullName}\n`;
+            context += `   - SĐT: ${order.phone}\n`;
+            context += `   - Địa chỉ: ${order.address}\n`;
+
+            if (order.createdAt) {
+                const orderDate = new Date(order.createdAt);
+                context += `   - Ngày đặt: ${orderDate.toLocaleDateString('vi-VN')}\n`;
+            }
+
+            if (order.updatedAt && order.updatedAt !== order.createdAt) {
+                const updateDate = new Date(order.updatedAt);
+                context += `   - Cập nhật cuối: ${updateDate.toLocaleDateString('vi-VN')}\n`;
+            }
+
+            context += '\n';
+        });
+
+        return context;
+    }
+
     // Method to build conversation context
     buildConversationContext(conversationHistory) {
         if (!conversationHistory || conversationHistory.length === 0) {
@@ -601,14 +719,14 @@ Trả lời CHÍNH XÁC 1 trong 2 từ: "interested" hoặc "spam"
 
 const ragChatbot = new RAGChatbot();
 
-async function askQuestion(question, images, conversationHistory = []) {
-    const result = await ragChatbot.askQuestion(question, images, conversationHistory);
+async function askQuestion(question, images, conversationHistory = [], userId = null) {
+    const result = await ragChatbot.askQuestion(question, images, conversationHistory, userId);
     return result.answer;
 }
 
 // New function that returns full result with sources and metadata
-async function askQuestionWithMetadata(question, images, conversationHistory = []) {
-    return await ragChatbot.askQuestion(question, images, conversationHistory);
+async function askQuestionWithMetadata(question, images, conversationHistory = [], userId = null) {
+    return await ragChatbot.askQuestion(question, images, conversationHistory, userId);
 }
 
 async function analyzeConversation(messages) {

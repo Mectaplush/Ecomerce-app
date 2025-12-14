@@ -8,7 +8,7 @@ pnpm-debug.log*
 lerna-debug.log*
 
 src/uploads
-/data
+/tempData
 /uploads
 src/scripts/phongVuScrape
 docDrafts/
