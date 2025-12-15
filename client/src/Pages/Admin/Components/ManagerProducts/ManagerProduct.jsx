@@ -11,7 +11,6 @@ import {
     requestCreateProduct,
     requestGetCategory,
     requestGetProducts,
-    requestUploadImages,
     requestUpdateProduct,
     requestDeleteProduct,
     insertProductsByCsv,
@@ -66,6 +65,7 @@ function ManagerProduct() {
     const [reEmbedModalOpen, setReEmbedModalOpen] = useState(false);
     const [reEmbedError, setReEmbedError] = useState('');
     const [reEmbedSuccess, setReEmbedSuccess] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSearch = (value) => {
         setSearchKeyword(value);
@@ -138,70 +138,127 @@ function ManagerProduct() {
     };
 
     const handleModalOk = async () => {
+        if (isSubmitting) return; // Prevent double submission
+
         try {
+            setIsSubmitting(true);
             const values = await form.validateFields();
 
-            let imageUrls = [];
+            // Prepare image data for API
+            const imageData = await prepareImageData();
 
-            // Handle image uploads only if there are new images
-            const newImages = fileList.filter((file) => file.originFileObj);
-            if (newImages.length > 0) {
-                const formData = new FormData();
-                newImages.forEach((file) => {
-                    formData.append('images', file.originFileObj);
-                });
-                const resImages = await requestUploadImages(formData);
-
-                // Combine new uploaded images with existing images
-                const existingImages = fileList.filter((file) => !file.originFileObj).map((file) => file.url);
-                imageUrls = [...existingImages, ...resImages.images];
-            } else {
-                // Keep existing images if no new uploads
-                imageUrls = fileList.map((file) => file.url);
-            }
-
-            const data = {
+            const productData = {
                 ...values,
                 description: editorContent,
-                images: imageUrls.join(','),
                 componentType: productType,
+                imageFiles: imageData.newFiles, // New image files to upload
+                existingImages: imageData.existingUrls, // URLs of existing images to keep
             };
 
-            try {
-                if (editingProduct) {
-                    const data2 = {
-                        ...values,
-                        description: editorContent,
-                        images: imageUrls.join(','),
-                        componentType: productType,
-                        category: categories.find((item) => item.name === values.category)?.id,
-                        id: editingProduct.id,
-                    };
-
-                    data.id = editingProduct.id;
-                    await requestUpdateProduct(data2);
-                } else {
-                    await requestCreateProduct(data);
-                }
-
-                await fetchProducts();
-                form.resetFields();
-                setFileList([]);
-                setEditorContent('');
-                message.success(`${editingProduct ? 'Cập nhật' : 'Thêm'} sản phẩm thành công`);
-                setIsModalOpen(false);
-            } catch (error) {
-                // Set form error instead of message.error
-                form.setFields([
-                    {
-                        name: 'name', // or appropriate field
-                        errors: [error?.response?.data?.message || 'Có lỗi xảy ra'],
-                    },
-                ]);
+            if (editingProduct) {
+                // Update existing product
+                const updateData = {
+                    ...productData,
+                    category: categories.find((item) => item.name === values.category)?.id,
+                    id: editingProduct.id,
+                };
+                
+                await requestUpdateProduct(updateData);
+                message.success('Cập nhật sản phẩm thành công');
+            } else {
+                // Create new product
+                await requestCreateProduct(productData);
+                message.success('Thêm sản phẩm thành công');
             }
-        } catch (validationError) {
-            // Form validation errors are already displayed in the form
-            console.log('Validate Failed:', validationError);
+
+            // Reset form and close modal
+            await fetchProducts();
+            resetForm();
+            setIsModalOpen(false);
+        } catch (error) {
+            // Handle API errors
+            const errorMessage = error?.response?.data?.message || 'Có lỗi xảy ra khi lưu sản phẩm';
+            form.setFields([
+                {
+                    name: 'name',
+                    errors: [errorMessage],
+                },
+            ]);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    /**
+     * Prepare image data for API submission
+     * Separates new files from existing image URLs
+     */
+    const prepareImageData = async () => {
+        const newFiles = [];
+        const existingUrls = [];
+
+        for (const file of fileList) {
+            if (file.originFileObj) {
+                // New file - convert to base64 or prepare for FormData
+                const fileData = await fileToBase64(file.originFileObj);
+                newFiles.push({
+                    name: file.name,
+                    data: fileData,
+                    type: file.originFileObj.type,
+                });
+            } else if (file.url) {
+                // Existing image URL
+                existingUrls.push(file.url);
+            }
+        }
+
+        return {
+            newFiles,
+            existingUrls,
+        };
+    };
+
+    /**
+     * Convert file to base64 for API transmission
+     */
+    const fileToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+        });
+    };
+
+    /**
+     * Reset form state
+     */
+    const resetForm = () => {
+        form.resetFields();
+        setFileList([]);
+        setEditorContent('');
+        setEditingProduct(null);
+        setProductType('pc');
+    };
+
+    /**
+     * Handle modal cancel with confirmation if there are unsaved changes
+     */
+    const handleModalCancel = () => {
+        if (fileList.length > 0 || form.getFieldsValue().name) {
+            Modal.confirm({
+                title: 'Xác nhận hủy',
+                content: 'Bạn có thay đổi chưa lưu. Bạn có chắc chắn muốn hủy?',
+                okText: 'Hủy bỏ thay đổi',
+                cancelText: 'Tiếp tục chỉnh sửa',
+                onOk: () => {
+                    resetForm();
+                    setIsModalOpen(false);
+                },
+            });
+        } else {
+            resetForm();
+            setIsModalOpen(false);
         }
     };
 
@@ -263,14 +320,39 @@ function ManagerProduct() {
             newFileList.splice(index, 1);
             setFileList(newFileList);
         },
-        beforeUpload: () => {
+        beforeUpload: (file) => {
+            // Validate file type and size
+            const isImage = file.type.startsWith('image/');
+            if (!isImage) {
+                message.error('Chỉ được tải lên file ảnh!');
+                return false;
+            }
+
+            const isLt10M = file.size / 1024 / 1024 < 10;
+            if (!isLt10M) {
+                message.error('Ảnh phải nhỏ hơn 10MB!');
+                return false;
+            }
+
             return false; // Prevent auto upload
         },
         onChange: (info) => {
-            setFileList(info.fileList);
+            // Filter out invalid files
+            const validFileList = info.fileList.filter(file => {
+                if (file.originFileObj) {
+                    const isImage = file.originFileObj.type.startsWith('image/');
+                    const isLt10M = file.originFileObj.size / 1024 / 1024 < 10;
+                    return isImage && isLt10M;
+                }
+                return true; // Keep existing URLs
+            });
+            
+            setFileList(validFileList);
         },
         fileList,
         multiple: true,
+        accept: 'image/*',
+        listType: 'picture-card',
     };
 
     const handleCsvImport = () => {
@@ -453,8 +535,11 @@ function ManagerProduct() {
                 title={editingProduct ? 'Sửa sản phẩm' : 'Thêm sản phẩm mới'}
                 open={isModalOpen}
                 onOk={handleModalOk}
-                onCancel={() => setIsModalOpen(false)}
+                onCancel={handleModalCancel}
                 width={800}
+                confirmLoading={isSubmitting}
+                okText={isSubmitting ? 'Đang lưu...' : (editingProduct ? 'Cập nhật' : 'Thêm')}
+                cancelText="Hủy"
             >
                 <Form form={form} layout="vertical" className={cx('form')}>
                     <Form.Item
@@ -558,19 +643,31 @@ function ManagerProduct() {
 
                     <Form.Item
                         name="images"
-                        label="Hình ảnh"
+                        label={`Hình ảnh ${fileList.length > 0 ? `(${fileList.length} ảnh)` : ''}`}
                         rules={[
                             {
                                 required: !editingProduct,
                                 message: 'Vui lòng tải lên ít nhất 1 hình ảnh!',
                             },
                         ]}
-                    >
-                        <Upload {...uploadProps} listType="picture-card">
-                            <div>
-                                <PlusOutlined />
-                                <div style={{ marginTop: 8 }}>Tải ảnh</div>
+                        extra={
+                            <div style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
+                                Ảnh sẽ được tải lên khi lưu sản phẩm. Tối đa 10MB mỗi ảnh.
+                                {fileList.some(f => f.originFileObj) && (
+                                    <div style={{ color: '#1890ff', marginTop: '2px' }}>
+                                        {fileList.filter(f => f.originFileObj).length} ảnh mới sẽ được tải lên
+                                    </div>
+                                )}
                             </div>
+                        }
+                    >
+                        <Upload {...uploadProps}>
+                            {fileList.length >= 8 ? null : (
+                                <div>
+                                    <PlusOutlined />
+                                    <div style={{ marginTop: 8 }}>Thêm ảnh</div>
+                                </div>
+                            )}
                         </Upload>
                     </Form.Item>
 

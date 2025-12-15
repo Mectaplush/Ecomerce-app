@@ -19,6 +19,7 @@ app.use(express.urlencoded({
 const { connectDB } = require('./config/index');
 const routes = require('./routes/index');
 const syncDatabase = require('./models/sync');
+const { initializeCollections } = require('./config/typesense');
 const { askQuestion } = require('./utils/Chatbot');
 
 const cors = require('cors');
@@ -48,8 +49,36 @@ app.use((req, res, next) => {
     next();
 });
 
-connectDB();
-syncDatabase();
+// Initialize database and Typesense
+async function initializeServices() {
+    try {
+        console.log('🚀 Initializing services...');
+
+        // Connect to database
+        await connectDB();
+        console.log('✅ Database connected');
+
+        // Sync database models
+        await syncDatabase();
+        console.log('✅ Database models synchronized');
+
+        // Initialize Typesense collections
+        try {
+            await initializeCollections();
+            console.log('✅ Typesense collections initialized');
+        } catch (error) {
+            console.warn('⚠️ Typesense initialization failed:', error.message);
+            console.warn('Typesense search features may not be available');
+        }
+
+        console.log('🎉 All services initialized successfully');
+    } catch (error) {
+        console.error('💥 Service initialization failed:', error);
+        process.exit(1);
+    }
+}
+
+initializeServices();
 
 app.post('/api/chat', async (req, res) => {
     const { question, images } = req.body;

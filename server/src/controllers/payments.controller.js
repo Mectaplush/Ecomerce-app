@@ -12,6 +12,20 @@ const crypto = require('crypto');
 
 const { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat } = require('vnpay');
 const { log } = require('util');
+const Typesense = require('typesense');
+
+// Initialize Typesense client
+const typesenseClient = new Typesense.Client({
+    nodes: [
+        {
+            host: process.env.TYPESENSE_HOST || 'localhost',
+            port: process.env.TYPESENSE_PORT || 8108,
+            protocol: process.env.TYPESENSE_PROTOCOL || 'http',
+        },
+    ],
+    apiKey: process.env.TYPESENSE_API_KEY || 'xyz',
+    connectionTimeoutSeconds: 2,
+});
 
 function generatePayID() {
     // Tạo ID thanh toán bao gồm cả giây để tránh trùng lặp
@@ -23,6 +37,110 @@ function generatePayID() {
 }
 
 class PaymentsController {
+    constructor() {
+        // Bind methods to ensure proper 'this' context
+        this.getOrderDetails = this.getOrderDetails.bind(this);
+        this.syncOrderToTypesense = this.syncOrderToTypesense.bind(this);
+        this.payments = this.payments.bind(this);
+        this.checkPaymentMomo = this.checkPaymentMomo.bind(this);
+        this.checkPaymentVnpay = this.checkPaymentVnpay.bind(this);
+        this.getPayments = this.getPayments.bind(this);
+        this.cancelOrder = this.cancelOrder.bind(this);
+        this.getProductByIdPayment = this.getProductByIdPayment.bind(this);
+        this.getOrderAdmin = this.getOrderAdmin.bind(this);
+        this.updateOrderStatus = this.updateOrderStatus.bind(this);
+    }
+
+    // Helper method to get complete order information
+    async getOrderDetails(idPayment, userId = null) {
+        const whereClause = { idPayment };
+        if (userId) {
+            whereClause.userId = userId;
+        }
+
+        const payments = await modelPayments.findAll({
+            where: whereClause,
+            order: [['createdAt', 'DESC']]
+        });
+
+        if (!payments.length) {
+            return null;
+        }
+
+        // Get order info from first payment record
+        const firstPayment = payments[0];
+        const user = await modelUsers.findOne({ where: { id: firstPayment.userId } });
+
+        // Get product details for all items
+        const productDetails = await Promise.all(
+            payments.map(async (payment) => {
+                const product = await modelProducts.findOne({
+                    where: { id: payment.productId }
+                });
+                return {
+                    id: payment.id,
+                    productId: product?.id,
+                    name: product?.name,
+                    price: product?.price,
+                    quantity: payment.quantity,
+                    images: product?.images,
+                    color: product?.color,
+                    size: product?.size
+                };
+            })
+        );
+
+        return {
+            orderId: firstPayment.idPayment,
+            userId: firstPayment.userId,
+            fullName: firstPayment.fullName || user?.fullName,
+            phone: firstPayment.phone || user?.phone,
+            address: firstPayment.address || user?.address,
+            totalPrice: firstPayment.totalPrice,
+            status: firstPayment.status,
+            typePayment: firstPayment.typePayment,
+            createdAt: firstPayment.createdAt,
+            updatedAt: firstPayment.updatedAt,
+            products: productDetails
+        };
+    }
+
+    // Method to sync order data to Typesense
+    async syncOrderToTypesense(orderDetails, operation = 'upsert') {
+        try {
+            if (!orderDetails) return;
+
+            const orderDocument = {
+                id: orderDetails.orderId,
+                order_id: orderDetails.orderId,
+                user_id: orderDetails.userId.toString(),
+                full_name: orderDetails.fullName || '',
+                phone: orderDetails.phone || '',
+                address: orderDetails.address || '',
+                total_price: orderDetails.totalPrice || 0,
+                status: orderDetails.status || 'pending',
+                payment_type: orderDetails.typePayment || '',
+                created_at: Math.floor(new Date(orderDetails.createdAt).getTime() / 1000),
+                updated_at: Math.floor(new Date(orderDetails.updatedAt || orderDetails.createdAt).getTime() / 1000),
+                product_count: orderDetails.products?.length || 0,
+                product_names: orderDetails.products?.map(p => p.name).filter(Boolean) || [],
+                product_ids: orderDetails.products?.map(p => p.productId?.toString()).filter(Boolean) || [],
+                total_quantity: orderDetails.products?.reduce((sum, p) => sum + (p.quantity || 0), 0) || 0
+            };
+
+            if (operation === 'delete') {
+                await typesenseClient.collections('orders').documents(orderDetails.orderId).delete();
+                console.log(`Order ${orderDetails.orderId} deleted from Typesense`);
+            } else {
+                await typesenseClient.collections('orders').documents().upsert(orderDocument);
+                console.log(`Order ${orderDetails.orderId} synced to Typesense`);
+            }
+        } catch (error) {
+            console.error('Error syncing order to Typesense:', error);
+            // Don't throw error to prevent breaking the main flow
+        }
+    }
+
     async payments(req, res) {
         const { id } = req.user;
         const { typePayment } = req.body;
@@ -84,7 +202,19 @@ class PaymentsController {
             // Clear the cart after successful payment creation
             await modelCart.destroy({ where: { userId: id } });
 
-            return new OK({ message: 'Thanh toán thanh cong', metadata: paymentId }).send(res);
+            // Get complete order information
+            const orderDetails = await this.getOrderDetails(paymentId, id);
+
+            // Sync order to Typesense
+            await this.syncOrderToTypesense(orderDetails, 'upsert');
+
+            new OK({
+                message: 'Thanh toán thành công',
+                metadata: {
+                    paymentId,
+                    order: orderDetails
+                }
+            }).send(res);
         }
 
         if (typePayment === 'MOMO') {
@@ -205,8 +335,6 @@ class PaymentsController {
                 console.log(
                     `✅ MOMO Payment: Reduced stock for ${product.name} by ${item.quantity}. New stock: ${newStock}`,
                 );
-
-                // Tạo payment record
                 return modelPayments.create({
                     userId: item.userId,
                     productId: item.productId,
@@ -223,7 +351,14 @@ class PaymentsController {
 
             await Promise.all(paymentPromises);
             await modelCart.destroy({ where: { userId: result } });
-            return res.redirect(`http://localhost:5173/payment/${paymentId}`);
+
+            // Get order details and sync to Typesense
+            const orderDetails = await this.getOrderDetails(paymentId, result);
+            await this.syncOrderToTypesense(orderDetails, 'upsert');
+
+            // Store order details in session or pass via query params
+            return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=MOMO`);
+
         }
     }
 
@@ -252,7 +387,6 @@ class PaymentsController {
                     `✅ VNPAY Payment: Reduced stock for ${product.name} by ${item.quantity}. New stock: ${newStock}`,
                 );
 
-                // Tạo payment record
                 return modelPayments.create({
                     userId: item.userId,
                     productId: item.productId,
@@ -269,7 +403,13 @@ class PaymentsController {
 
             await Promise.all(paymentPromises);
             await modelCart.destroy({ where: { userId: idCart } });
-            return res.redirect(`http://localhost:5173/payment/${paymentId}`);
+
+            // Get order details and sync to Typesense
+            const orderDetails = await this.getOrderDetails(paymentId, idCart);
+            await this.syncOrderToTypesense(orderDetails, 'upsert');
+
+            // Store order details in session or pass via query params
+            return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=VNPAY`);
         }
     }
 
@@ -359,7 +499,18 @@ class PaymentsController {
 
         await Promise.all(statusUpdatePromises);
 
-        new OK({ message: 'Hủy đơn hàng thành công' }).send(res);
+        // Get updated order information
+        const orderDetails = await this.getOrderDetails(orderId, id);
+
+        // Sync updated order to Typesense
+        await this.syncOrderToTypesense(orderDetails, 'upsert');
+
+        new OK({
+            message: 'Hủy đơn hàng thành công',
+            metadata: {
+                order: orderDetails
+            }
+        }).send(res);
     }
 
     async getProductByIdPayment(req, res) {
@@ -497,8 +648,17 @@ class PaymentsController {
             // Cập nhật trạng thái cho tất cả đơn hàng có cùng idPayment
             await modelPayments.update({ status }, { where: { idPayment: order.idPayment } });
 
+            // Get updated order information
+            const orderDetails = await this.getOrderDetails(order.idPayment);
+
+            // Sync updated order to Typesense
+            await this.syncOrderToTypesense(orderDetails, 'upsert');
+
             new OK({
                 message: 'Cập nhật trạng thái đơn hàng thành công',
+                metadata: {
+                    order: orderDetails
+                }
             }).send(res);
         } catch (error) {
             console.error('Error in updateOrderStatus:', error);

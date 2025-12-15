@@ -13,8 +13,6 @@ class ChatbotController {
         const { id } = req.user;
         const { question, images } = req.body;
 
-        const response = await askQuestion(question, images);
-
         // Tìm hoặc tạo conversation cho user này
         let conversation = await chatbotConversationModel.findOne({
             where: { userId: id },
@@ -28,6 +26,22 @@ class ChatbotController {
                 messageCount: 0,
             });
         }
+
+        // Get recent conversation history for context (last 10 messages)
+        const conversationHistory = await chatbotModel.findAll({
+            where: {
+                userId: id,
+                conversationId: conversation.id
+            },
+            order: [['createdAt', 'DESC']],
+            limit: 10
+        });
+
+        // Reverse to get chronological order (oldest first)
+        const historyForContext = conversationHistory.reverse();
+
+        // Get AI response with conversation context
+        const response = await askQuestion(question, images, historyForContext);
 
         // Lưu tin nhắn của user
         await chatbotModel.create({

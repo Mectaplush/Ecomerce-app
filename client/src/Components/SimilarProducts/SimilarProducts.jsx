@@ -7,7 +7,7 @@ import { Spin, Alert } from 'antd';
 
 const cx = classNames.bind(styles);
 
-function SimilarProducts({ productId, topK = 5 }) {
+function SimilarProducts({ productId, topK = 12 }) {
     const [similarProducts, setSimilarProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

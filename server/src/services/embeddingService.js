@@ -42,9 +42,29 @@ class MultimodalEmbeddingService {
    */
   async embedTextWithCLIP(text) {
     try {
-      const textInputs = await (await this.tokenizerTask)(text, { padding: true, truncation: true });
-      const { text_embeds } = await (await this.textModelTask)(textInputs);
-      return text_embeds.data;
+      const tokenizer = await this.tokenizerTask;
+      const textModel = await this.textModelTask;
+
+      const textInputs = await tokenizer(text, { padding: true, truncation: true });
+      const { text_embeds } = await textModel(textInputs);
+
+      // Ensure we return a flat array of numbers
+      let embedding;
+      if (text_embeds.data) {
+        embedding = Array.from(text_embeds.data);
+      } else if (Array.isArray(text_embeds)) {
+        embedding = text_embeds.flat();
+      } else if (text_embeds.tolist) {
+        embedding = text_embeds.tolist().flat();
+      } else {
+        // Fallback: convert tensor to array
+        embedding = Array.from(text_embeds).flat();
+      }
+
+      console.log(`Text embedding shape: [${embedding.length}]`, typeof embedding[0]);
+      return Array.isArray(embedding)
+        ? embedding.flat()
+        : Array.from(embedding);
     } catch (error) {
       console.error('CLIP text embedding error:', error);
       throw error;
@@ -70,10 +90,28 @@ class MultimodalEmbeddingService {
         imageData = `data:${mimeType};base64,${base64}`;
       }
 
+      const processor = await this.processorTask;
+      const visionModel = await this.visionModelTask;
+
       const rawImage = await base64ToRawImage(imageData);
-      const imageInputs = await (await this.processorTask)(rawImage);
-      const { image_embeds } = await (await this.visionModelTask)(imageInputs);
-      return image_embeds.data;
+      const imageInputs = await processor(rawImage);
+      const { image_embeds } = await visionModel(imageInputs);
+
+      // Ensure we return a flat array of numbers
+      let embedding;
+      if (image_embeds.data) {
+        embedding = Array.from(image_embeds.data);
+      } else if (Array.isArray(image_embeds)) {
+        embedding = image_embeds.flat();
+      } else if (image_embeds.tolist) {
+        embedding = image_embeds.tolist().flat();
+      } else {
+        // Fallback: convert tensor to array
+        embedding = Array.from(image_embeds).flat();
+      }
+
+      console.log(`Image embedding shape: [${embedding.length}]`, typeof embedding[0]);
+      return embedding;
     } catch (error) {
       console.error('CLIP image embedding error:', error);
       throw error;
@@ -82,38 +120,47 @@ class MultimodalEmbeddingService {
 
   /**
      * Create multimodal product embedding using CLIP
-     * @param {string} text - Text data
+     * @param {{
+     *  name: string,
+     *  description: string,
+     *  componentType: string,
+     * }} product - Text data
      * @param {string[]} imagesData - Array of image data (base64 or URLs)
-     * @returns {Promise<number[]>} Embeddings vector
+     * @returns {Promise<{
+     *  textEmbedding: {
+     *  name: number[],
+     *  description: number[],
+     *  componentType: number[],
+     * },
+     *  imagesEmbeddings: number[][]
+     * }>} Embeddings vector
      */
-  async embedTextAndImagesWithCLIP(text, imagesData) {
+  async embedTextAndImagesWithCLIP(product, imagesData) {
     try {
-      const embeddings = [];
-      const weights = [];
+      const textEmbedding = {
+        name: await this.embedTextWithCLIP(product.name),
+        description: await this.embedTextWithCLIP(product.description),
+        componentType: await this.embedTextWithCLIP(product.componentType)
+      };
+      const imagesEmbeddings = [];
 
-      const textEmbedding = await this.embedTextWithCLIP(text);
-      embeddings.push(textEmbedding);
-      weights.push(0.6); // Higher weight for text
-
-      // 2. Create image embeddings with CLIP if images exist
+      // Create image embeddings with CLIP if images exist
       if (imagesData && imagesData.length > 0) {
-        const imageUrls = imagesData;
-        for (const imageUrl of imageUrls.slice(0, 3)) { // Limit to 3 images
+        for (const imageUrl of imagesData.slice(0, 3)) { // Limit to 3 images
           try {
             const imageEmbedding = await this.embedImageWithCLIP(imageUrl);
-            embeddings.push(imageEmbedding);
-            weights.push(0.4 / Math.min(imageUrls.length, 3)); // Distribute weight among images
+            imagesEmbeddings.push(imageEmbedding);
           } catch (error) {
             console.warn(`Failed to embed image ${imageUrl}:`, error);
           }
         }
       }
 
-      // 3. Combine embeddings using weighted average
-      const combinedEmbedding = this.weightedAverageEmbeddings(embeddings, weights);
-      return combinedEmbedding;
-    }
-    catch (error) {
+      return {
+        textEmbedding: textEmbedding,
+        imagesEmbeddings: imagesEmbeddings
+      };
+    } catch (error) {
       console.error('CLIP product embedding error:', error);
       throw error;
     }
@@ -122,26 +169,113 @@ class MultimodalEmbeddingService {
   /**
    * Create multimodal product embedding using CLIP
    * @param {Object} product - Product data
-   * @returns {Promise<string>} Embedding record ID
+   * @returns {Promise<string[]>} Array of embedding record IDs
    */
   async embedProductWithCLIP(product) {
     try {
+      const recordIds = [];
       const embeddings = [];
       const weights = [];
 
       // 1. Create text embedding with CLIP
-      const productText = `${product.name} ${product.description} ${product.componentType}`;
-      const combinedEmbedding = await this.embedTextAndImagesWithCLIP(
-        productText,
-        product.images ?? []
+      // const productText = `${product.name} ${product.description} ${product.componentType}`;
+
+      const productEmbeddings = await this.embedTextAndImagesWithCLIP(
+        product,
+        product.images ? product.images.split(',').map(url => url.trim()) : []
       );
 
-      // 4. Store in Pinecone with CLIP metadata
-      const record = {
-        id: `${product.id}_clip`,
-        values: combinedEmbedding,
+      const textEmbedding = productEmbeddings.textEmbedding;
+
+      function createTextRecord(propertyName, embedding) {
+        return {
+          id: `${product.id}_clip_text_${propertyName}`,
+          values: embedding, // Guaranteed flat array
+          metadata: {
+            type: `multimodal_clip_text_${propertyName}`,
+            productId: product.id,
+            name: product.name,
+            price: product.price,
+            componentType: product.componentType,
+            categoryId: product.categoryId,
+            embeddingType: 'text',
+            embeddingMethod: 'clip',
+            timestamp: new Date().toISOString()
+          }
+        };
+      }
+
+      const nameRecord = createTextRecord('name', textEmbedding.name);
+      const descriptionRecord = createTextRecord('description', textEmbedding.description);
+      const componentTypeRecord = createTextRecord('componentType', textEmbedding.componentType);
+
+
+      console.log(`Text embedding validation: length=${textEmbedding.name.length}, first value type=${typeof textEmbedding.name[0]}`);
+
+      await this.index.upsert([nameRecord]);
+      recordIds.push(nameRecord.id);
+      embeddings.push(textEmbedding.name);
+      weights.push(0.6);
+
+      await this.index.upsert([descriptionRecord]);
+      recordIds.push(descriptionRecord.id);
+      embeddings.push(textEmbedding.description);
+      weights.push(0.3);
+
+      await this.index.upsert([componentTypeRecord]);
+      recordIds.push(componentTypeRecord.id);
+      embeddings.push(textEmbedding.componentType);
+      weights.push(0.1);
+
+      // 3. Store each image embedding as separate record
+      if (productEmbeddings.imagesEmbeddings && productEmbeddings.imagesEmbeddings.length > 0) {
+        const imageWeight = 0.4 / productEmbeddings.imagesEmbeddings.length;
+
+        for (let i = 0; i < productEmbeddings.imagesEmbeddings.length; i++) {
+          // Validation: Ensure imageEmbedding is a flat array
+          const imageEmbedding = Array.isArray(productEmbeddings.imagesEmbeddings[i])
+            ? productEmbeddings.imagesEmbeddings[i].flat()
+            : Array.from(productEmbeddings.imagesEmbeddings[i]);
+
+          const imageRecord = {
+            id: `${product.id}_clip_image_${i}`,
+            values: imageEmbedding, // Guaranteed flat array
+            metadata: {
+              type: 'multimodal_clip_image',
+              productId: product.id,
+              name: product.name,
+              price: product.price,
+              componentType: product.componentType,
+              categoryId: product.categoryId,
+              embeddingType: 'image',
+              imageIndex: i,
+              embeddingMethod: 'clip',
+              timestamp: new Date().toISOString()
+            }
+          };
+
+          console.log(`Image ${i} embedding validation: length=${imageEmbedding.length}, first value type=${typeof imageEmbedding[0]}`);
+
+          await this.index.upsert([imageRecord]);
+          recordIds.push(imageRecord.id);
+          embeddings.push(imageEmbedding);
+          weights.push(imageWeight);
+        }
+      }
+
+      // 4. Create and store combined embedding as separate record
+      const combinedEmbedding = this.weightedAverageEmbeddings(embeddings, weights);
+
+      // Validation: Ensure combinedEmbedding is a flat array
+      const validatedCombinedEmbedding = Array.isArray(combinedEmbedding)
+        ? combinedEmbedding.flat()
+        : Array.from(combinedEmbedding);
+
+      const combinedRecord = {
+        id: `${product.id}_clip_combined`,
+        values: validatedCombinedEmbedding, // Guaranteed flat array
         metadata: {
-          type: 'multimodal_clip',
+          type: 'multimodal_clip_combined',
           productId: product.id,
           name: product.name,
           price: product.price,
@@ -149,13 +283,19 @@ class MultimodalEmbeddingService {
           categoryId: product.categoryId,
           hasImages: !!product.images,
           imageCount: product.images ? product.images.split(',').length : 0,
+          embeddingType: 'combined',
           embeddingMethod: 'clip',
           timestamp: new Date().toISOString()
         }
       };
 
-      await this.index.upsert([record]);
-      return record.id;
+      console.log(`Combined embedding validation: length=${validatedCombinedEmbedding.length}, first value type=${typeof validatedCombinedEmbedding[0]}`);
+
+      await this.index.upsert([combinedRecord]);
+      recordIds.push(combinedRecord.id);
+
+      console.log(`✅ Created ${recordIds.length} embedding records for product ${product.id}`);
+      return recordIds;
 
     } catch (error) {
       console.error('CLIP product embedding error:', error);
@@ -180,8 +320,10 @@ class MultimodalEmbeddingService {
 
     for (let i = 0; i < embeddings.length; i++) {
       const weight = weights[i] / totalWeight;
+      const embedding = Array.isArray(embeddings[i]) ? embeddings[i] : Array.from(embeddings[i]);
+
       for (let j = 0; j < dimensions; j++) {
-        result[j] += embeddings[i][j] * weight;
+        result[j] += embedding[j] * weight;
       }
     }
 
@@ -564,17 +706,54 @@ class MultimodalEmbeddingService {
         threshold = 0.7,
       } = options;
 
-      let queryEmbedding = await this.embedTextAndImagesWithCLIP(query, imagesData);
+      // Get query embeddings
+      const queryEmbeddingData = await this.embedTextAndImagesWithCLIP({
+        name: query,
+        description: "",
+        componentType: ""
+      }, imagesData);
 
-      // Search in Pinecone
+      // Create combined query embedding using same weighting as products
+      //       const queryEmbeddings = [queryEmbeddingData.textEmbedding];
+      //       const queryWeights = [0.6];
+      // 
+      //       if (queryEmbeddingData.imagesEmbeddings && queryEmbeddingData.imagesEmbeddings.length > 0) {
+      //         const imageWeight = 0.4 / queryEmbeddingData.imagesEmbeddings.length;
+      //         queryEmbeddings.push(...queryEmbeddingData.imagesEmbeddings);
+      //         queryWeights.push(...Array(queryEmbeddingData.imagesEmbeddings.length).fill(imageWeight));
+      //       }
+      // 
+      //       const queryEmbedding = this.weightedAverageEmbeddings(queryEmbeddings, queryWeights);
+      // 
+      //       // Validation: Ensure queryEmbedding is a flat array
+      //       const validatedQueryEmbedding = Array.isArray(queryEmbedding)
+      //         ? queryEmbedding.flat()
+      //         : Array.from(queryEmbedding);
+      // 
+      //       console.log(`Query embedding validation: length=${validatedQueryEmbedding.length}, first value type=${typeof validatedQueryEmbedding[0]}`);
+
+      // Search in Pinecone for combined embeddings
+      // const searchResults = await this.index.query({
+      //   vector: validatedQueryEmbedding, // Guaranteed flat array
+      //   topK: topK * 2, // Get more results for deduplication
+      //   includeMetadata,
+      //   filter: {
+      //     type: { $eq: 'multimodal_clip_combined' } // Only search combined CLIP embeddings
+      //   }
+      // });
+
       const searchResults = await this.index.query({
-        vector: queryEmbedding,
+        vector: queryEmbeddingData.textEmbedding.name, // Guaranteed flat array
         topK: topK * 2, // Get more results for deduplication
         includeMetadata,
         filter: {
-          type: { $eq: 'multimodal_clip' }
+          type: { $eq: 'multimodal_clip_text_name' }
         }
       });
+
+      //console.log(`Query embedding: `, queryEmbeddingData.textEmbedding.name);
+      //console.log(`Multimodal search returned ${searchResults.matches}`);
+
 
       // Filter and deduplicate results
       const filteredResults = searchResults.matches
@@ -586,6 +765,39 @@ class MultimodalEmbeddingService {
     } catch (error) {
       console.error('Multimodal search error:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Clean up all embeddings for a product
+   * @param {number} productId - Product ID
+   * @returns {Promise<void>}
+   */
+  async deleteProductEmbeddings(productId) {
+    try {
+      const deletePromises = [];
+
+      // Delete text embedding
+      deletePromises.push(
+        this.index.deleteOne(`${productId}_clip_text`).catch(() => null)
+      );
+
+      // Delete combined embedding
+      deletePromises.push(
+        this.index.deleteOne(`${productId}_clip_combined`).catch(() => null)
+      );
+
+      // Delete potential image embeddings (up to 10 images)
+      for (let i = 0; i < 10; i++) {
+        deletePromises.push(
+          this.index.deleteOne(`${productId}_clip_image_${i}`).catch(() => null)
+        );
+      }
+
+      await Promise.all(deletePromises);
+      console.log(`Cleaned up embeddings for product ${productId}`);
+    } catch (error) {
+      console.error(`Error cleaning up embeddings for product ${productId}: `, error);
     }
   }
 

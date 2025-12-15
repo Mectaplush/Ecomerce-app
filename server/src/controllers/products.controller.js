@@ -1,6 +1,48 @@
 const { BadRequestError } = require('../core/error.response');
 const { OK, Created } = require('../core/success.response');
 const { Op } = require('sequelize');
+const path = require('path');
+const fs = require('fs').promises;
+
+/**
+ * Parse CSV row handling quoted fields and escaped quotes
+ * @param {string} row - CSV row to parse
+ * @returns {Array} - Array of field values
+ */
+function parseCSVRow(row) {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    let i = 0;
+
+    while (i < row.length) {
+        const char = row[i];
+
+        if (char === '"') {
+            if (inQuotes && i + 1 < row.length && row[i + 1] === '"') {
+                // Escaped quote inside quoted field
+                current += '"';
+                i += 2;
+            } else {
+                // Toggle quote state
+                inQuotes = !inQuotes;
+                i++;
+            }
+        } else if (char === ',' && !inQuotes) {
+            // Field delimiter outside quotes
+            result.push(current.trim());
+            current = '';
+            i++;
+        } else {
+            current += char;
+            i++;
+        }
+    }
+
+    // Add the last field
+    result.push(current.trim());
+    return result;
+}
 
 const modelProducts = require('../models/products.model');
 const modelCategory = require('../models/category.model');
@@ -8,7 +50,10 @@ const modelBuildPcCart = require('../models/buildPcCart.model');
 const modelUserWatchProduct = require('../models/userWatchProduct.model');
 const modelProductPreview = require('../models/productPreview');
 const modelUser = require('../models/users.model');
-const embeddingService = require('../services/embeddingService');
+// Use Typesense for embeddings and search
+const embeddingService = require('../services/typesenseEmbeddingService');
+// Keep original service for fallback if needed
+// const pineconeEmbeddingService = require('../services/embeddingService');
 
 /**
      * Helper function to create embeddings for a product
@@ -76,12 +121,8 @@ async function updateProductEmbeddings(product, oldImages = null) {
 
         // Update CLIP multimodal embedding
         try {
-            // Delete old CLIP embedding first
-            try {
-                await embeddingService.index.deleteOne(`${product.id}_clip`);
-            } catch (deleteError) {
-                console.warn(`Failed to delete old CLIP embedding for product ${product.id}:`, deleteError);
-            }
+            // Delete all old CLIP embeddings first (text, images, combined)
+            await embeddingService.deleteProductEmbeddings(product.id);
 
             // Create new CLIP embedding
             await embeddingService.embedProductWithCLIP(product);
@@ -126,42 +167,82 @@ async function updateProductEmbeddings(product, oldImages = null) {
     }
 }
 
+/**
+     * Process base64 image uploads
+     * @param {Array} imageFiles - Array of {name, data, type} objects
+     * @returns {Promise<Array>} Array of uploaded image URLs
+     */
+async function processImageUploads(imageFiles) {
+    const src_path = 'src/uploads/images';
+    const url = 'http://localhost:3000/uploads/images';
+
+    const uploadedUrls = [];
+    const uploadDir = path.join(__dirname, `../../${src_path}`);
+    // Ensure upload directory exists
+    await fs.mkdir(uploadDir, { recursive: true });
+
+    for (const imageFile of imageFiles) {
+        try {
+            // Extract base64 data
+            const matches = imageFile.data.match(/^data:image\/([a-zA-Z]*);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+                console.warn('Invalid base64 image data:', imageFile.name);
+                continue;
+            }
+
+            const imageType = matches[1];
+            const imageBuffer = Buffer.from(matches[2], 'base64');
+
+            // Generate unique filename
+            const timestamp = Date.now();
+            const randomString = Math.random().toString(36).substring(2, 15);
+            const filename = `product_${timestamp}_${randomString}.${imageType}`;
+            const filepath = path.join(uploadDir, filename);
+
+            // Write file
+            await fs.writeFile(filepath, imageBuffer);
+
+            // Generate URL (adjust based on your static file serving setup)
+            const imageUrl = `${url}/${filename}`;
+            uploadedUrls.push(imageUrl);
+
+        } catch (error) {
+            console.error('Failed to process image:', imageFile.name, error);
+            // Continue with other images instead of failing completely
+        }
+    }
+
+    return uploadedUrls;
+}
+
+/**
+     * Generate embeddings for product (async)
+     * @param {Object} product - Product instance
+     */
+async function generateProductEmbeddings(product) {
+    try {
+        await embeddingService.deleteProductEmbeddings(product.id);
+        await embeddingService.embedProductWithCLIP(product);
+        console.log('Generated embeddings for product:', product.id);
+    } catch (error) {
+        console.error('Embedding generation failed for product:', product.id, error);
+    }
+}
+
 class controllerProducts {
     async createProduct(req, res) {
-        const {
-            name,
-            price,
-            description,
-            images,
-            category,
-            stock,
-            cpu,
-            main,
-            ram,
-            storage,
-            gpu,
-            power,
-            caseComputer,
-            coolers,
-            componentType,
-            discount,
-        } = req.body;
-
-        if (!name || !price || !description || !images || !category || !stock || !componentType) {
-            throw new BadRequestError('Bạn đang thiếu thông tin');
-        }
-
-        let product;
-
-        if (componentType === 'pc') {
-            product = await modelProducts.create({
+        try {
+            const {
                 name,
                 price,
                 description,
-                discount,
-                images,
-                categoryId: category,
                 stock,
+                category,
+                componentType,
+                discount = 0,
+                imageFiles = [], // Base64 image data
+                existingImages = [], // URLs of existing images (for consistency)
+                // PC-specific fields
                 cpu,
                 main,
                 ram,
@@ -169,29 +250,75 @@ class controllerProducts {
                 gpu,
                 power,
                 caseComputer,
-                coolers,
-                componentType,
-            });
-        } else {
-            product = await modelProducts.create({
+                coolers
+            } = req.body;
+
+            // Validate required fields
+            if (!name || !price || !description || !stock || !category || !componentType) {
+                throw new BadRequestError('Bạn đang thiếu thông tin');
+            }
+
+            // Handle image uploads
+            let uploadedImageUrls = [];
+            if (imageFiles && imageFiles.length > 0) {
+                uploadedImageUrls = await processImageUploads(imageFiles);
+            }
+
+            // Combine with existing images
+            const allImageUrls = [...existingImages, ...uploadedImageUrls];
+
+            if (allImageUrls.length === 0) {
+                throw new BadRequestError('Cần ít nhất một hình ảnh');
+            }
+
+            // Create product in database
+            const productData = {
                 name,
-                price,
+                price: parseFloat(price),
                 description,
-                images,
+                stock: parseInt(stock),
                 categoryId: category,
-                stock,
                 componentType,
-                discount: discount || 0,
+                discount: parseFloat(discount),
+                images: allImageUrls.join(','),
+                // PC-specific fields
+                ...(componentType === 'pc' && {
+                    cpu,
+                    main,
+                    ram,
+                    storage,
+                    gpu,
+                    power,
+                    caseComputer,
+                    coolers
+                })
+            };
+
+            const product = await modelProducts.create(productData);
+
+            // Generate embeddings asynchronously
+            generateProductEmbeddings(product).catch(error => {
+                console.error('Failed to generate embeddings for product:', product.id, error);
             });
+
+            new Created({
+                message: 'Create product successfully',
+                metadata: {
+                    product,
+                    uploadedImages: uploadedImageUrls.length,
+                    totalImages: allImageUrls.length
+                }
+            }).send(res);
+
+        } catch (error) {
+            console.error('Create product error:', error);
+
+            if (error instanceof BadRequestError) {
+                throw error;
+            }
+
+            throw new BadRequestError(`Failed to create product: ${error.message}`);
         }
-
-        // Create embeddings for the new product
-        await createProductEmbeddings(product);
-
-        new Created({
-            message: 'Create product successfully',
-            metadata: product,
-        }).send(res);
     }
 
     async getProducts(req, res) {
@@ -203,63 +330,108 @@ class controllerProducts {
     }
 
     async updateProduct(req, res) {
-        const {
-            name,
-            price,
-            description,
-            discount,
-            images,
-            category,
-            stock,
-            cpu,
-            main,
-            ram,
-            storage,
-            gpu,
-            power,
-            caseComputer,
-            componentType,
-            coolers,
-            id,
-        } = req.body;
+        try {
+            const {
+                id,
+                name,
+                price,
+                description,
+                stock,
+                category,
+                componentType,
+                discount = 0,
+                imageFiles = [], // Base64 image data for new images
+                existingImages = [], // URLs of existing images to keep
+                // PC-specific fields
+                cpu,
+                main,
+                ram,
+                storage,
+                gpu,
+                power,
+                caseComputer,
+                coolers
+            } = req.body;
 
-        const product = await modelProducts.findOne({ where: { id } });
+            // Check if product exists
+            const existingProduct = await modelProducts.findByPk(id);
+            if (!existingProduct) {
+                throw new BadRequestError('Product not found');
+            }
 
-        if (!product) {
-            throw new BadRequestError('Product not found');
+            // Handle new image uploads
+            let uploadedImageUrls = [];
+            if (imageFiles && imageFiles.length > 0) {
+                uploadedImageUrls = await processImageUploads(imageFiles);
+            }
+
+            // Determine images to remove (existing images not in existingImages array)
+            const currentImages = existingProduct.images ? existingProduct.images.split(',') : [];
+            const imagesToRemove = currentImages.filter(url => !existingImages.includes(url));
+
+            // Remove unused images asynchronously
+            if (imagesToRemove.length > 0) {
+                this.removeUnusedImages(imagesToRemove).catch(error => {
+                    console.warn('Failed to remove unused images:', error);
+                });
+            }
+
+            // Combine existing and new images
+            const allImageUrls = [...existingImages, ...uploadedImageUrls];
+
+            if (allImageUrls.length === 0) {
+                throw new BadRequestError('Cần ít nhất một hình ảnh');
+            }
+
+            // Update product data
+            const updateData = {
+                name,
+                price: parseFloat(price),
+                description,
+                stock: parseInt(stock),
+                categoryId: category,
+                componentType,
+                discount: parseFloat(discount),
+                images: allImageUrls.join(','),
+                // PC-specific fields
+                ...(componentType === 'pc' && {
+                    cpu,
+                    main,
+                    ram,
+                    storage,
+                    gpu,
+                    power,
+                    caseComputer,
+                    coolers
+                })
+            };
+
+            await existingProduct.update(updateData);
+
+            // Regenerate embeddings asynchronously
+            generateProductEmbeddings(existingProduct).catch(error => {
+                console.error('Failed to regenerate embeddings for product:', id, error);
+            });
+
+            new OK({
+                message: 'Update product successfully',
+                metadata: {
+                    product: existingProduct,
+                    uploadedImages: uploadedImageUrls.length,
+                    removedImages: imagesToRemove.length,
+                    totalImages: allImageUrls.length
+                }
+            }).send(res);
+
+        } catch (error) {
+            console.error('Update product error:', error);
+
+            if (error instanceof BadRequestError) {
+                throw error;
+            }
+
+            throw new BadRequestError(`Failed to update product: ${error.message}`);
         }
-
-        // Store old images for comparison
-        const oldImages = product.images;
-
-        const updatedData = {
-            name,
-            price,
-            description,
-            discount,
-            images: images ?? product.images,
-            categoryId: category,
-            stock,
-            cpu,
-            main,
-            ram,
-            storage,
-            gpu,
-            power,
-            caseComputer,
-            coolers,
-            componentType,
-        };
-
-        await product.update(updatedData);
-
-        // Update embeddings with new data
-        await updateProductEmbeddings(product, oldImages);
-
-        new OK({
-            message: 'Update product successfully',
-            metadata: product,
-        }).send(res);
     }
 
     async deleteProduct(req, res) {
@@ -299,8 +471,6 @@ class controllerProducts {
         }).send(res);
     }
 
-    // ...existing getter methods remain unchanged...
-
     async insertProductsByCsv(req, res) {
         try {
             const { csvData } = req.body;
@@ -316,7 +486,7 @@ class controllerProducts {
             }
 
             // Extract header and validate required columns
-            const headers = lines[0].split(',').map(h => h.trim());
+            const headers = parseCSVRow(lines[0]);
             const requiredFields = ['name', 'price', 'description', 'images', 'categoryId', 'stock', 'componentType'];
 
             // Check if all required fields exist in headers
@@ -330,7 +500,7 @@ class controllerProducts {
 
             // Process each data row
             for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',').map(v => v.trim());
+                const values = parseCSVRow(lines[i]);
 
                 if (values.length !== headers.length) {
                     errors.push(`Dòng ${i + 1}: Số lượng cột không khớp`);
@@ -920,9 +1090,6 @@ class controllerProducts {
 
     async getSimilarProducts(req, res) {
         try {
-            console.log('📍 getSimilarProducts called with params:', req.params);
-            console.log('📍 getSimilarProducts called with query:', req.query);
-
             const { productId } = req.params;
             const { topK = 5 } = req.query;
 
@@ -944,23 +1111,15 @@ class controllerProducts {
                 throw new BadRequestError('Product not found');
             }
 
-            // Create text query from source product
-            const productText = `${sourceProduct.name} ${sourceProduct.description} ${sourceProduct.componentType}`;
-
-            // Search for similar products using CLIP embeddings
-            const searchResults = await embeddingService.searchMultimodal(productText, [], {
-                topK: parseInt(topK) + 1, // +1 to exclude the source product itself
+            const searchResults = await embeddingService.similaritySearchById(productId, {
+                topK: parseInt(topK),
                 includeMetadata: true,
                 threshold: 0.3 // Lower threshold to get more results
             });
 
-            // Filter out the source product and get product IDs
-            const similarProductIds = searchResults
-                .filter(result => result.productId && result.productId !== parseInt(productId))
-                .slice(0, parseInt(topK))
-                .map(result => result.productId);
+            const similarProductIds = searchResults.map(result => result.productId);
 
-            // Get detailed product information from database
+            // Fetch full product details for similar products
             const similarProducts = await modelProducts.findAll({
                 where: {
                     id: similarProductIds
@@ -974,14 +1133,14 @@ class controllerProducts {
             });
 
             // Sort products based on similarity scores
-            const sortedProducts = similarProductIds.map(id => {
-                const product = similarProducts.find(p => p.id === id);
-                const searchResult = searchResults.find(r => r.productId === id);
-                return {
-                    ...product.toJSON(),
-                    similarityScore: searchResult ? searchResult.score : 0
-                };
-            }).filter(product => product.id); // Remove any undefined products
+            // const sortedProducts = similarProductIds.map(id => {
+            //     const product = similarProducts.find(p => p.id === id);
+            //     const searchResult = searchResults.find(r => r.productId === id);
+            //     return {
+            //         ...product.toJSON(),
+            //         similarityScore: searchResult ? searchResult.score : 0
+            //     };
+            // }).filter(product => product.id); // Remove any undefined products
 
             new OK({
                 message: 'Similar products retrieved successfully',
@@ -991,8 +1150,8 @@ class controllerProducts {
                         name: sourceProduct.name,
                         componentType: sourceProduct.componentType
                     },
-                    similarProducts: sortedProducts,
-                    totalFound: sortedProducts.length
+                    similarProducts: similarProducts,
+                    totalFound: similarProducts.length
                 }
             }).send(res);
 
@@ -1004,6 +1163,28 @@ class controllerProducts {
             }
 
             throw new BadRequestError(`Failed to get similar products: ${error.message}`);
+        }
+    }
+
+    /**
+     * Remove unused images from filesystem
+     * @param {Array} imageUrls - URLs of images to remove
+     */
+    async removeUnusedImages(imageUrls) {
+        for (const url of imageUrls) {
+            try {
+                // Extract filename from URL
+                const filename = path.basename(url);
+                const filepath = path.join(__dirname, '../../uploads/products', filename);
+
+                // Check if file exists and remove
+                await fs.access(filepath);
+                await fs.unlink(filepath);
+                console.log('Removed unused image:', filename);
+            } catch (error) {
+                // File might not exist or be in use - this is not critical
+                console.warn('Could not remove image:', url, error.message);
+            }
         }
     }
 }
