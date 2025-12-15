@@ -65,7 +65,7 @@
     height: 35px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     border-radius: 50%;
     font-weight: bold;
     font-size: 18px;
@@ -168,4 +168,340 @@
 
 .certification img {
     max-width: 120px;
+}
+
+// Tablet (768px - 1024px)
+@media (max-width: 1024px) {
+    .container {
+        max-width: 95%;
+        padding: 0 10px;
+    }
+
+    .showroom-title {
+        font-size: 24px;
+    }
+
+    .showroom-list {
+        gap: 20px;
+    }
+
+    .showroom-item {
+        max-width: 100%;
+    }
+
+    .showroom-header {
+        padding: 8px 16px;
+    }
+
+    .showroom-number {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+        margin-right: 12px;
+        justify-content: center;
+    }
+
+    .showroom-name {
+        font-size: 16px;
+    }
+
+    .footer-sections {
+        gap: 20px;
+    }
+
+    .footer-section {
+        padding: 0 10px;
+    }
+}
+
+// Tablet nhỏ (768px - 900px)
+@media (max-width: 900px) {
+    .wrapper {
+        padding: 30px 0;
+    }
+
+    .showroom-section {
+        margin-bottom: 30px;
+    }
+
+    .showroom-title {
+        font-size: 20px;
+        margin-bottom: 15px;
+    }
+
+    .showroom-title::after {
+        width: 150px;
+    }
+
+    .showroom-list {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .showroom-item {
+        max-width: 100%;
+    }
+
+    .footer-sections {
+        flex-wrap: wrap;
+        gap: 30px;
+    }
+
+    .footer-section {
+        flex: 1 1 calc(50% - 15px);
+        min-width: 250px;
+        padding: 0 5px;
+    }
+
+    .section-title {
+        font-size: 15px;
+        margin-bottom: 15px;
+    }
+}
+
+// Mobile (max-width: 768px)
+@media (max-width: 768px) {
+    .wrapper {
+        padding: 20px 0;
+    }
+
+    .container {
+        max-width: 100%;
+        padding: 0 15px;
+    }
+
+    .showroom-section {
+        margin-bottom: 25px;
+    }
+
+    .showroom-title {
+        font-size: 18px;
+        margin-bottom: 15px;
+        padding-bottom: 8px;
+    }
+
+    .showroom-title::after {
+        width: 100px;
+        height: 1.5px;
+    }
+
+    .showroom-list {
+        flex-direction: column;
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .showroom-item {
+        max-width: 100%;
+    }
+
+    .showroom-header {
+        padding: 8px 12px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+
+    .showroom-number {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        margin-right: 10px;
+        justify-content: center;
+    }
+
+    .showroom-name {
+        font-size: 14px;
+    }
+
+    .showroom-info {
+        padding-left: 5px;
+    }
+
+    .info-item {
+        margin-bottom: 8px;
+        font-size: 14px;
+        align-items: flex-start;
+    }
+
+    .info-item svg {
+        margin-right: 8px;
+        margin-top: 2px;
+        font-size: 14px;
+    }
+
+    .footer-sections {
+        flex-direction: column;
+        gap: 20px;
+        padding-top: 20px;
+    }
+
+    .footer-section {
+        flex: 1;
+        padding: 0;
+        width: 100%;
+    }
+
+    .section-title {
+        font-size: 14px;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+    }
+
+    .section-title::after {
+        width: 30px;
+        height: 1.5px;
+    }
+
+    .section-links {
+        margin-bottom: 15px;
+    }
+
+    .section-links li {
+        margin-bottom: 10px;
+    }
+
+    .section-links a {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .mobile-button {
+        padding: 8px 12px;
+        font-size: 14px;
+        border-radius: 4px;
+        margin-top: 8px;
+        display: inline-block;
+        width: auto;
+    }
+
+    .certification {
+        text-align: center;
+        margin-top: 15px;
+    }
+
+    .certification img {
+        max-width: 100px;
+    }
+}
+
+// Mobile nhỏ (max-width: 480px)
+@media (max-width: 480px) {
+    .wrapper {
+        padding: 15px 0;
+    }
+
+    .container {
+        padding: 0 10px;
+    }
+
+    .showroom-title {
+        font-size: 16px;
+        line-height: 1.3;
+    }
+
+    .showroom-header {
+        padding: 6px 10px;
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+
+    .showroom-number {
+        width: 24px;
+        height: 24px;
+        font-size: 12px;
+        margin-right: 0;
+        margin-bottom: 5px;
+        justify-content: center;
+    }
+
+    .showroom-name {
+        font-size: 13px;
+        text-align: center;
+    }
+
+    .showroom-info {
+        padding-left: 0;
+    }
+
+    .info-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+        margin-bottom: 10px;
+    }
+
+    .info-item svg {
+        margin-right: 0;
+        margin-top: 0;
+        align-self: flex-start;
+    }
+
+    .info-item span {
+        font-size: 13px;
+        line-height: 1.4;
+    }
+
+    .section-title {
+        font-size: 13px;
+        margin-bottom: 10px;
+    }
+
+    .section-links a {
+        font-size: 13px;
+    }
+
+    .mobile-button {
+        padding: 6px 10px;
+        font-size: 13px;
+        width: 100%;
+        text-align: center;
+        box-sizing: border-box;
+    }
+
+    .certification img {
+        max-width: 80px;
+    }
+}
+
+// Landscape mobile (max-height: 500px và orientation: landscape)
+@media (max-height: 500px) and (orientation: landscape) {
+    .wrapper {
+        padding: 10px 0;
+    }
+
+    .showroom-section {
+        margin-bottom: 15px;
+    }
+
+    .showroom-title {
+        font-size: 14px;
+        margin-bottom: 10px;
+    }
+
+    .showroom-list {
+        flex-direction: row;
+        gap: 15px;
+    }
+
+    .showroom-item {
+        flex: 1;
+    }
+
+    .footer-sections {
+        padding-top: 15px;
+    }
+
+    .section-title {
+        font-size: 12px;
+        margin-bottom: 8px;
+    }
+
+    .section-links li {
+        margin-bottom: 5px;
+    }
+
+    .section-links a {
+        font-size: 12px;
+    }
 }

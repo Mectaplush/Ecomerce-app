@@ -1,96 +1,626 @@
 .wrapper {
-    height: 100vh;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    // Đổi nền nhẹ nhàng hơn - sử dụng nền soft pastel
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+    position: relative;
+    overflow-x: hidden;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        // Tạo pattern nhẹ nhàng hơn
+        background: radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+            radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+        pointer-events: none;
+        z-index: 1;
+    }
+
+    header {
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        backdrop-filter: blur(10px);
+    }
+
+    footer {
+        margin-top: auto;
+        z-index: 10;
+    }
 }
 
 .inner {
-    width: 800px;
-    margin: 30px auto;
+    width: 100%;
+    max-width: 600px;
+    margin: 40px auto;
     padding: 20px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    position: relative;
+    z-index: 10;
 }
 
 .login-form {
-    background: rgba(255, 255, 255, 0.95);
-    padding: 32px;
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 520px;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    padding: 50px;
+    border-radius: 24px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 8px 30px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #a8edea, #fed6e3);
+        z-index: 1;
+        border-radius: 24px 24px 0 0;
+    }
+
+    &:hover {
+        box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15), 0 12px 40px rgba(0, 0, 0, 0.1),
+            inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        transform: translateY(-4px);
+    }
 
     h2 {
         text-align: center;
-        margin-bottom: 24px;
-        color: #333;
-        font-size: 24px;
-        font-weight: 600;
+        margin-bottom: 40px;
+        color: #2c3e50;
+        font-size: 32px;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        position: relative;
+        z-index: 2;
+        text-shadow: none;
     }
 
+    // SỬA LỖI INPUT - Ant Design global overrides
     :global {
-        .ant-input-affix-wrapper {
-            border-radius: 8px;
-            border: 1px solid #e8e8e8;
-            transition: all 0.3s ease;
+        .ant-form-item {
+            margin-bottom: 28px;
 
-            &:hover,
-            &:focus {
-                border-color: #764ba2;
-                box-shadow: 0 0 0 2px rgba(118, 75, 162, 0.1);
+            // Label styling
+            .ant-form-item-label > label {
+                color: #2c3e50 !important;
+                font-weight: 600 !important;
+                font-size: 15px !important;
+                margin-bottom: 8px !important;
+            }
+
+            // CHỈ STYLE WRAPPER - KHÔNG STYLE .ant-input
+            .ant-input-affix-wrapper {
+                border: 2px solid #e1e5e9 !important;
+                border-radius: 12px !important;
+                padding: 0 18px !important;
+                height: 56px !important;
+                background: rgba(255, 255, 255, 0.95) !important;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+                transition: all 0.3s ease !important;
+                display: flex;
+                align-items: center;
+
+                // HOVER STATE
+                &:hover {
+                    border-color: #667eea !important;
+                    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15) !important;
+                    background: rgba(255, 255, 255, 1) !important;
+                }
+
+                // FOCUS STATE
+                &.ant-input-affix-wrapper-focused {
+                    border-color: #667eea !important;
+                    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12) !important;
+                    background: rgba(255, 255, 255, 1) !important;
+                    outline: none !important;
+                }
+
+                // ERROR STATE
+                &.ant-input-affix-wrapper-status-error {
+                    border-color: #e53e3e !important;
+                    box-shadow: 0 0 0 3px rgba(229, 62, 62, 0.1) !important;
+                    background: rgba(254, 242, 242, 0.6) !important;
+                }
+
+                // SUCCESS STATE
+                &.ant-input-affix-wrapper-status-success {
+                    border-color: #10b981 !important;
+                    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1) !important;
+                    background: rgba(240, 253, 244, 0.5) !important;
+                }
+            }
+
+            // INPUT BÊN TRONG - AUTO SIZE
+            .ant-input {
+                border: none !important;
+                height: auto !important;
+                padding: 0 !important;
+                font-size: 16px !important;
+                background: transparent !important;
+                box-shadow: none !important;
+
+                &::placeholder {
+                    color: #9ca3af !important;
+                    font-weight: 400 !important;
+                    opacity: 1 !important;
+                }
+
+                &:focus {
+                    outline: none !important;
+                    box-shadow: none !important;
+                }
+            }
+
+            // Input prefix icons
+            .ant-input-prefix {
+                color: #f093fb !important;
+                font-size: 18px !important;
+                margin-right: 14px !important;
+            }
+
+            // Password icon
+            .ant-input-password-icon {
+                color: #a0aec0 !important;
+                font-size: 16px !important;
+
+                &:hover {
+                    color: #f093fb !important;
+                }
+            }
+
+            // Submit button
+            .ant-btn-primary {
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%) !important;
+                border: none !important;
+                border-radius: 14px !important;
+                height: 56px !important;
+                font-size: 18px !important;
+                font-weight: 600 !important;
+                margin-top: 12px !important;
+                transition: all 0.3s ease !important;
+                box-shadow: 0 8px 24px rgba(240, 147, 251, 0.3) !important;
+                position: relative !important;
+                overflow: hidden !important;
+                margin-bottom: 10px !important;
+
+                &::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: -100%;
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+                    transition: left 0.5s ease;
+                }
+
+                &:hover {
+                    transform: translateY(-2px) !important;
+                    box-shadow: 0 12px 32px rgba(240, 147, 251, 0.4) !important;
+                    background: linear-gradient(135deg, #e879f9 0%, #f43f5e 100%) !important;
+
+                    &::before {
+                        left: 100%;
+                    }
+                }
+
+                &:active {
+                    transform: translateY(0) !important;
+                }
+
+                &:focus {
+                    box-shadow: 0 0 0 3px rgba(240, 147, 251, 0.2) !important;
+                }
+
+                &.ant-btn-loading {
+                    &::before {
+                        animation: shimmer 1.5s infinite;
+                    }
+                }
+            }
+
+            // ERROR MESSAGE
+            .ant-form-item-explain-error {
+                margin-top: 8px !important;
+                color: #e53e3e !important;
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                display: flex !important;
+                align-items: center !important;
+                padding: 4px 0 !important;
+
+                &::before {
+                    content: '⚠️';
+                    margin-right: 6px;
+                    font-size: 12px;
+                }
+            }
+
+            // Feedback icons
+            .ant-form-item-feedback-icon {
+                font-size: 16px !important;
+            }
+
+            .ant-form-item-feedback-icon-success {
+                color: #10b981 !important;
+            }
+
+            .ant-form-item-feedback-icon-error {
+                color: #e53e3e !important;
+            }
+
+            .ant-form-item-feedback-icon-validating {
+                color: #3182ce !important;
             }
         }
 
-        .ant-input-prefix {
-            color: #764ba2;
+        // Google Login Container
+        .google-login-container {
+            margin: 32px 0;
+            text-align: center;
+            position: relative;
+
+            &::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: linear-gradient(90deg, transparent, #e2e8f0, transparent);
+                z-index: 1;
+            }
+
+            &::after {
+                content: 'Đăng nhập với Google';
+                position: absolute;
+                top: -12px; // di chuyển label lên trên
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(255, 255, 255, 0.98);
+                padding: 0 12px;
+                color: #718096;
+                font-size: 13px;
+                font-weight: 500;
+                z-index: 2;
+                white-space: nowrap; // tránh xuống dòng
+            }
+
+            // vùng chứa nút Google
+            > div {
+                margin-top: 16px !important; // khoảng cách với divider
+            }
+        }
+    }
+
+    .login-button {
+        width: 100% !important;
+    }
+
+    .form-footer {
+        margin-top: 32px;
+        padding-top: 20px;
+        border-top: 1px solid #e2e8f0;
+        position: relative;
+        z-index: 5; // cao hơn nút Google
+        overflow: visible;
+
+        .register-text,
+        .register-link {
+            white-space: nowrap; // giữ cùng một dòng trên màn hình vừa
+        }
+    }
+
+    // Animation keyframes
+    @keyframes shimmer {
+        0% {
+            transform: translateX(-100%);
+        }
+        100% {
+            transform: translateX(100%);
+        }
+    }
+
+    // ======================== RESPONSIVE ========================
+
+    // Large Desktop (1200px+)
+    @media (min-width: 1200px) {
+        .inner {
+            margin: 60px auto;
+            padding: 40px;
+            max-width: 650px;
         }
 
-        .ant-btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 8px;
-            height: 45px;
-            font-size: 16px;
-            font-weight: 500;
-            margin-top: 16px;
-            transition: all 0.3s ease;
+        .login-form {
+            max-width: 580px;
+            padding: 60px;
+
+            h2 {
+                font-size: 36px;
+                margin-bottom: 48px;
+            }
+
+            :global {
+                .ant-input-affix-wrapper,
+                .ant-input {
+                    height: 60px !important;
+                    font-size: 17px !important;
+                    padding: 16px 20px !important;
+                }
+
+                .ant-btn-primary {
+                    height: 60px !important;
+                    font-size: 19px !important;
+                }
+
+                .ant-input-prefix {
+                    font-size: 20px !important;
+                }
+            }
+
+            .form-footer {
+                .forgot-password,
+                .register-text,
+                .register-link {
+                    font-size: 16px !important;
+                }
+            }
+        }
+    }
+
+    // Desktop (1024px to 1199px)
+    @media (max-width: 1199px) {
+        .inner {
+            margin: 40px auto;
+            padding: 30px;
+            max-width: 580px;
+        }
+
+        .login-form {
+            max-width: 520px;
+            padding: 50px;
+
+            h2 {
+                font-size: 30px;
+            }
+        }
+    }
+
+    // Tablet Landscape (768px to 1023px)
+    @media (max-width: 1023px) {
+        .inner {
+            margin: 30px auto;
+            padding: 20px;
+            max-width: 90%;
+        }
+
+        .login-form {
+            max-width: 480px;
+            padding: 40px;
+            border-radius: 20px;
+
+            h2 {
+                font-size: 26px;
+                margin-bottom: 32px;
+            }
+
+            :global {
+                .ant-input-affix-wrapper,
+                .ant-input {
+                    height: 52px !important;
+                    font-size: 15px !important;
+                    border-radius: 12px !important;
+                }
+
+                .ant-btn-primary {
+                    height: 52px !important;
+                    font-size: 16px !important;
+                    border-radius: 12px !important;
+                }
+            }
+        }
+    }
+
+    // Tablet Portrait (768px and below)
+    @media (max-width: 768px) {
+        .wrapper {
+            // Nền mobile nhẹ nhàng hơn
+            background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
+
+            &::before {
+                opacity: 0.5;
+            }
+        }
+
+        .inner {
+            margin: 20px auto;
+            padding: 16px;
+            width: 100%;
+            max-width: 100%;
+        }
+
+        .login-form {
+            max-width: 100%;
+            width: 100%;
+            padding: 32px;
+            border-radius: 20px;
+            margin: 0;
 
             &:hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(118, 75, 162, 0.3);
+                transform: none;
+            }
+
+            h2 {
+                font-size: 24px;
+                margin-bottom: 28px;
+            }
+
+            :global {
+                .ant-form-item {
+                    margin-bottom: 22px !important;
+                }
+
+                .ant-input-affix-wrapper,
+                .ant-input {
+                    height: 50px !important;
+                    font-size: 15px !important;
+                    border-radius: 12px !important;
+                    padding: 12px 16px !important;
+                }
+
+                .ant-btn-primary {
+                    height: 50px !important;
+                    font-size: 16px !important;
+                    border-radius: 12px !important;
+                }
+            }
+
+            .form-footer {
+                margin-top: 24px;
+
+                :global(.ant-row) {
+                    flex-direction: row !important; // Giữ ngang thay vì column
+                    justify-content: space-between !important;
+                    align-items: center !important;
+                    flex-wrap: nowrap !important; // Không wrap
+                    gap: 8px !important; // Giảm gap
+                }
+
+                .register-text {
+                    font-size: 13px !important; // Giảm font size
+                }
+
+                .register-link {
+                    font-size: 13px !important; // Giảm font size
+                }
+
+                .forgot-password {
+                    font-size: 13px !important; // Giảm font size
+                }
             }
         }
+    }
 
-        .ant-form-item-explain-error {
-            margin-top: 4px;
-            color: #ff4d4f;
+    // Mobile (480px to 767px)
+    @media (max-width: 480px) {
+        .inner {
+            margin: 16px auto;
+            padding: 12px;
+            width: calc(100% - 24px);
+        }
+
+        .login-form {
+            padding: 28px;
+            border-radius: 16px;
+
+            h2 {
+                font-size: 22px;
+                margin-bottom: 24px;
+            }
+
+            :global {
+                .ant-input-affix-wrapper,
+                .ant-input {
+                    height: 48px !important;
+                    font-size: 15px !important;
+                    border-radius: 10px !important;
+                }
+
+                .ant-btn-primary {
+                    height: 48px !important;
+                    font-size: 15px !important;
+                    border-radius: 10px !important;
+                }
+            }
+
+            .form-footer {
+                .register-text {
+                    font-size: 12px !important; // Giảm thêm font size
+                }
+
+                .register-link {
+                    font-size: 12px !important;
+                }
+
+                .forgot-password {
+                    font-size: 12px !important;
+                }
+            }
         }
     }
-}
 
-.login-button {
-    width: 100%;
-}
+    // Extra Small Mobile (360px and below)
+    @media (max-width: 360px) {
+        .inner {
+            margin: 12px auto;
+            padding: 8px;
+            width: calc(100% - 16px);
+        }
 
-.form-footer {
-    margin-top: 16px;
+        .login-form {
+            padding: 24px;
+            border-radius: 12px;
 
-    .forgot-password {
-        color: #764ba2;
-        transition: all 0.3s ease;
+            h2 {
+                font-size: 20px;
+                margin-bottom: 20px;
+            }
 
-        &:hover {
-            color: #667eea;
-            text-decoration: underline;
+            :global {
+                .ant-input-affix-wrapper,
+                .ant-input {
+                    height: 46px !important;
+                    font-size: 14px !important;
+                }
+
+                .ant-btn-primary {
+                    height: 46px !important;
+                    font-size: 14px !important;
+                }
+            }
+
+            .form-footer {
+                // Trường hợp màn hình quá nhỏ thì mới cho xuống hàng
+                :global(.ant-row) {
+                    flex-direction: column !important;
+                    text-align: center !important;
+                    gap: 12px !important;
+                }
+            }
         }
     }
 
-    .register-text {
-        color: #666;
-    }
-
-    .register-link {
-        color: #764ba2;
-        font-weight: 500;
-        transition: all 0.3s ease;
-
-        &:hover {
-            color: #667eea;
-            text-decoration: underline;
+    // Prevent zoom on input focus (iOS Safari)
+    @media screen and (max-width: 768px) {
+        .login-form {
+            :global {
+                .ant-input-affix-wrapper input,
+                .ant-input {
+                    font-size: 16px !important;
+                }
+            }
         }
     }
 }

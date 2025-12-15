@@ -4,6 +4,7 @@ const router = express.Router();
 const controllerUser = require('../controllers/users.controller');
 const { authUser, authAdmin } = require('../auth/checkAuth');
 const { asyncHandler } = require('../auth/checkAuth');
+const { uploadAvatar } = require('../config/cloudinary');
 
 router.post('/api/register', asyncHandler(controllerUser.registerUser));
 router.post('/api/login', asyncHandler(controllerUser.loginUser));
@@ -27,6 +28,10 @@ router.post('/api/forgot-password', asyncHandler(controllerUser.forgotPassword))
 router.post('/api/reset-password', asyncHandler(controllerUser.resetPassword));
 
 router.post('/api/update-role-user', asyncHandler(controllerUser.updateRoleUser));
+
+// Avatar routes
+router.post('/api/upload-avatar', authUser, uploadAvatar.single('avatar'), asyncHandler(controllerUser.uploadAvatar));
+router.delete('/api/delete-avatar', authUser, asyncHandler(controllerUser.deleteAvatar));
 
 router.get('/api/users/pie-chart', asyncHandler(controllerUser.getBieuDoTron));
 

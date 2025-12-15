@@ -38,9 +38,14 @@ const User = connect.define(
             type: DataTypes.ENUM('google', 'email'),
             allowNull: false,
         },
+        avatar: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            defaultValue: null,
+        },
     },
     {
-        freezeTableName: true, // 👈 Giữ nguyên tên bảng là 'users'
+        freezeTableName: true, // Giữ nguyên tên bảng là 'users'
         timestamps: true,
     },
 );

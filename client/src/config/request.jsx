@@ -275,6 +275,20 @@ export const requestUpdateUser = async (data) => {
     return res.data;
 };
 
+export const requestUploadAvatar = async (formData) => {
+    const res = await request.post('/api/upload-avatar', formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+    return res.data;
+};
+
+export const requestDeleteAvatar = async () => {
+    const res = await request.delete('/api/delete-avatar');
+    return res.data;
+};
+
 export const requestDashboard = async (params) => {
     const res = await request.get('/api/dashboard', { params: params });
     return res.data;
@@ -392,14 +406,23 @@ export const requestGetBlogById = async (id) => {
  * @param {string} body
  */
 
-export const insertProductsByCsv = async(body) => {
-    return (await request.post('/api/insert-products-by-csv', body))
-}
+export const insertProductsByCsv = async (body) => {
+    return await request.post('/api/insert-products-by-csv', body);
+};
 
-export const reEmbedAllProducts = async() => {
+export const reEmbedAllProducts = async () => {
     const res = await request.post('/api/re-embed-all-products');
     return res.data;
-}
+};
+export const requestUpdateProductPreview = async (data) => {
+    const res = await request.put('/api/update-product-preview', data);
+    return res.data;
+};
+
+export const requestDeleteProductPreview = async (data) => {
+    const res = await request.delete('/api/delete-product-preview', { data });
+    return res.data;
+};
 
 let isRefreshing = false;
 let failedRequestsQueue = [];

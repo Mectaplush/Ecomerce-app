@@ -12,15 +12,65 @@ import { Row, Col, Card, Typography, Divider, Button } from 'antd';
 
 const { Title, Paragraph } = Typography;
 
+// ...existing code...
 const settings = {
     dots: true,
     infinite: true,
     speed: 500,
     slidesToShow: 6,
     slidesToScroll: 1,
-    autoplay: true, // Thêm dòng này
-    autoplaySpeed: 3000, // Và dòng này (3 giây chuyển 1 lần)
+    autoplay: true,
+    autoplaySpeed: 3000,
+    responsive: [
+        {
+            breakpoint: 1200,
+            settings: {
+                slidesToShow: 5,
+                slidesToScroll: 1,
+            },
+        },
+        {
+            breakpoint: 1024,
+            settings: {
+                slidesToShow: 4,
+                slidesToScroll: 1,
+            },
+        },
+        {
+            breakpoint: 768,
+            settings: {
+                slidesToShow: 3,
+                slidesToScroll: 1,
+                dots: true,
+            },
+        },
+        {
+            breakpoint: 600,
+            settings: {
+                slidesToShow: 2,
+                slidesToScroll: 1,
+                dots: false,
+            },
+        },
+        {
+            breakpoint: 480,
+            settings: {
+                slidesToShow: 2,
+                slidesToScroll: 1,
+                dots: false,
+            },
+        },
+        {
+            breakpoint: 320,
+            settings: {
+                slidesToShow: 1,
+                slidesToScroll: 1,
+                dots: false,
+            },
+        },
+    ],
 };
+
 const cx = classNames.bind(styles);
 
 function HomePage() {
@@ -98,11 +148,7 @@ function HomePage() {
 
             <div className={cx('hot-sale')}>
                 <div>
-                    <img
-                        style={{ width: '20%', height: '50px' }}
-                        src="https://pcmarket.vn/static/assets/2021/images/hot-sale-cuoi-tuan-1.gif"
-                        alt=""
-                    />
+                    <img src="https://pcmarket.vn/static/assets/2021/images/hot-sale-cuoi-tuan-1.gif" alt="" />
                 </div>
                 <Slider {...settings}>
                     {productHotSale.map((product) => (
@@ -115,15 +161,22 @@ function HomePage() {
 
             <div className={cx('category-list')}>
                 {category.map((item) => (
-                    <div>
-                        <div className={cx('category-item')} key={item.id}>
-                            <h2>{item.category.name}</h2>
-                            <button onClick={() => navigate(`/category/${item.category.id}`)}>Xem tất cả</button>
+                    <div key={item.id}>
+                        <div className={cx('category-header')}>
+                            <div className={cx('category-item')}>
+                                <h2>{item.category.name}</h2>
+                            </div>
+                            <button
+                                className={cx('category-button')}
+                                onClick={() => navigate(`/category/${item.category.id}`)}
+                            >
+                                Xem tất cả
+                            </button>
                         </div>
                         <div className={cx('slider-container')}>
                             <Slider {...settings}>
                                 {item.products.map((product) => (
-                                    <div>
+                                    <div key={product.id}>
                                         <CardBody product={product} />
                                     </div>
                                 ))}

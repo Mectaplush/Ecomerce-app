@@ -35,14 +35,15 @@ function CategoryComponentFilter({ onChange, categoryId, filters, selectedIds = 
     // Reset selectedParts when category changes
     useEffect(() => {
         setSelectedParts([]);
+        setSearchMap({}); // Reset search map khi đổi category
     }, [categoryId]);
 
-    // Update selectedParts from selectedIds
+    // Update selectedParts from selectedIds - chỉ reset khi selectedIds thực sự là empty array
     useEffect(() => {
-        if (selectedIds.length === 0) {
+        if (Array.isArray(selectedIds) && selectedIds.length === 0 && selectedParts.length > 0) {
             setSelectedParts([]);
         }
-    }, [selectedIds]);
+    }, [selectedIds, selectedParts.length]);
 
     // Hàm loại bỏ trùng lặp các component dựa trên tên
     const deduplicateComponentsByName = (components) => {
@@ -73,7 +74,14 @@ function CategoryComponentFilter({ onChange, categoryId, filters, selectedIds = 
 
     useEffect(() => {
         const fetchComponentParts = async () => {
-            setLoading(true);
+            // Chỉ set loading khi thực sự cần fetch mới
+            const shouldFetch =
+                !componentGroups.length || (categoryId && categoryId !== 'all') || (filters && filters.length > 0);
+
+            if (shouldFetch) {
+                setLoading(true);
+            }
+
             try {
                 // Nếu đã có dữ liệu filters được truyền từ component cha
                 if (filters && filters.length > 0) {
@@ -98,36 +106,43 @@ function CategoryComponentFilter({ onChange, categoryId, filters, selectedIds = 
 
                 // Nếu không có filters, gọi API như trước
                 const params = {};
-                if (categoryId) {
+                if (categoryId && categoryId !== 'all') {
                     params.categoryId = categoryId;
                 }
 
                 const result = await requestGetCategoryByComponentTypes(params);
 
-                // Loại bỏ trùng lặp các component trong result
-                const deduplicatedResult = result.map((group) => ({
-                    ...group,
-                    components: deduplicateComponentsByName(group.components),
-                }));
+                if (result && Array.isArray(result)) {
+                    // Loại bỏ trùng lặp các component trong result
+                    const deduplicatedResult = result.map((group) => ({
+                        ...group,
+                        components: deduplicateComponentsByName(group.components || []),
+                    }));
 
-                // Cấu trúc dữ liệu của các linh kiện nhóm theo loại
-                setComponentGroups(deduplicatedResult);
+                    // Cấu trúc dữ liệu của các linh kiện nhóm theo loại
+                    setComponentGroups(deduplicatedResult);
 
-                // Khởi tạo các bộ lọc ban đầu
-                const filtered = {};
-                deduplicatedResult.forEach((group) => {
-                    filtered[group.type] = [...group.components];
-                });
+                    // Khởi tạo các bộ lọc ban đầu
+                    const filtered = {};
+                    deduplicatedResult.forEach((group) => {
+                        filtered[group.type] = [...group.components];
+                    });
 
-                setFilteredComponents(filtered);
+                    setFilteredComponents(filtered);
+                }
             } catch (error) {
                 console.error('Error fetching component parts:', error);
+                // Đặt empty data thay vì để loading mãi mãi
+                setComponentGroups([]);
+                setFilteredComponents({});
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchComponentParts();
+        // Thêm debounce để tránh gọi API liên tục
+        const timeoutId = setTimeout(fetchComponentParts, 100);
+        return () => clearTimeout(timeoutId);
     }, [categoryId, filters]);
 
     const handleSearch = (type, searchText) => {
@@ -176,10 +191,12 @@ function CategoryComponentFilter({ onChange, categoryId, filters, selectedIds = 
         }
     };
 
-    if (loading) {
+    if (loading && componentGroups.length === 0) {
         return (
-            <Card className={cx('component-filter-card')} title="Linh kiện">
-                <Spin />
+            <Card className={cx('component-filter-card', 'loading')} title="Bộ lọc linh kiện">
+                <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                    <Spin />
+                </div>
             </Card>
         );
     }
@@ -205,7 +222,7 @@ function CategoryComponentFilter({ onChange, categoryId, filters, selectedIds = 
     });
 
     return (
-        <Card className={cx('component-filter-card')} title="Bộ lọc linh kiện">
+        <Card className={cx('component-filter-card', { loading })} title="Bộ lọc linh kiện">
             <div className={cx('filter-scroll-container')}>
                 <Collapse defaultActiveKey={[]}>
                     {sortedComponentGroups.map((group) => (

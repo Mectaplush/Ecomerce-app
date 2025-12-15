@@ -39,6 +39,13 @@ class controllerCart {
         // Tính toán số lượng mới
         const newQuantity = existingCartItem ? existingCartItem.quantity + quantity : quantity;
 
+        // Kiểm tra số lượng có đủ hay không (so với stock hiện tại)
+        if (newQuantity > product.stock) {
+            throw new BadRequestError(
+                `Số lượng yêu cầu (${newQuantity}) vượt quá số lượng có trong kho (${product.stock})`,
+            );
+        }
+
         let totalPrice = 0;
         if (!isComponent) {
             if (product?.discount > 0) {
@@ -62,13 +69,8 @@ class controllerCart {
             cart = await modelCart.create({ userId: id, productId, quantity: newQuantity, totalPrice });
         }
 
-        // Trừ số lượng sản phẩm trong kho
-        const newStock = product.stock - quantity;
-        if (!isComponent) {
-            await modelProduct.update({ stock: newStock }, { where: { id: productId } });
-        } else {
-            await modelProductComponent.update({ stock: newStock }, { where: { id: productId } });
-        }
+        // ✅ KHÔNG TRỪ STOCK KHI THÊM VÀO GIỎ HÀNG
+        // Stock sẽ được trừ khi thanh toán thành công
 
         new Created({ message: 'Add to cart successfully', metadata: cart }).send(res);
     }
@@ -100,10 +102,17 @@ class controllerCart {
                 const finalPrice =
                     !isComponent && product.discount > 0 ? product.price * (1 - product.discount / 100) : product.price;
 
+                // Kiểm tra trạng thái stock
+                const isOutOfStock = product.stock <= 0;
+                const isInsufficientStock = item.quantity > product.stock;
+
                 return {
                     id: item.id,
                     quantity: item.quantity,
                     totalPrice: item.totalPrice,
+                    isOutOfStock, // Sản phẩm hết hàng
+                    isInsufficientStock, // Số lượng trong giỏ > stock hiện tại
+                    availableStock: product.stock, // Số lượng còn lại trong kho
                     product: {
                         ...product.dataValues,
                         price: finalPrice,
@@ -140,16 +149,8 @@ class controllerCart {
             isComponent = true;
         }
 
-        if (product) {
-            // Add the quantity back to stock
-            const newStock = product.stock + cartItem.quantity;
-
-            if (!isComponent) {
-                await modelProduct.update({ stock: newStock }, { where: { id: cartItem.productId } });
-            } else {
-                await modelProductComponent.update({ stock: newStock }, { where: { id: cartItem.productId } });
-            }
-        }
+        // ✅ KHÔNG CỘNG LẠI STOCK KHI XÓA KHỎI GIỎ HÀNG
+        // Vì stock không bị trừ khi thêm vào giỏ hàng
 
         // Delete the cart item
         await modelCart.destroy({ where: { id: cartId } });
@@ -167,13 +168,18 @@ class controllerCart {
 
         const cart = await modelCart.findAll({ where: { userId: id } });
 
-        if (!cart) {
-            throw new BadRequestError('Không tìm thấy giỏ hàng');
+        if (cart.length === 0) {
+            // Không có sản phẩm trong giỏ hàng nhưng vẫn coi là thành công
+            new OK({ message: 'Cập nhật thông tin giỏ hàng thành công' }).send(res);
+            return;
         }
 
-        cart.map(async (item) => {
-            await item.update({ fullName, address, phone });
-        });
+        // Sử dụng Promise.all để đảm bảo tất cả updates hoàn thành
+        await Promise.all(
+            cart.map(async (item) => {
+                await item.update({ fullName, address, phone });
+            }),
+        );
 
         new OK({ message: 'Cập nhật thông tin giỏ hàng thành công' }).send(res);
     }
@@ -240,6 +246,85 @@ class controllerCart {
             }),
         );
         new OK({ message: 'Lấy giỏ hàng thành công', metadata: data }).send(res);
+    }
+
+    async updateQuantityBuildPc(req, res) {
+        const { id } = req.user;
+        const { productId, quantity } = req.body;
+
+        console.log('Update request:', { productId, quantity });
+
+        if (!productId || !quantity || quantity <= 0) {
+            throw new BadRequestError('Thông tin không hợp lệ');
+        }
+
+        // Giới hạn số lượng hợp lý
+        if (quantity > 9999) {
+            throw new BadRequestError('Số lượng không thể vượt quá 9999');
+        }
+
+        // Tìm sản phẩm trong build PC cart
+        const cartItem = await buildPcCart.findOne({
+            where: { userId: id, productId },
+        });
+
+        if (!cartItem) {
+            throw new BadRequestError('Không tìm thấy sản phẩm trong giỏ hàng');
+        }
+
+        // Lấy thông tin sản phẩm để kiểm tra stock và tính giá
+        const product = await modelProduct.findOne({ where: { id: productId } });
+
+        if (!product) {
+            throw new BadRequestError('Không tìm thấy sản phẩm');
+        }
+
+        // Kiểm tra stock - chỉ so sánh với stock thực tế
+        if (quantity > product.stock) {
+            throw new BadRequestError(`Số lượng không đủ. Chỉ còn ${product.stock} sản phẩm trong kho`);
+        }
+
+        // Tính toán totalPrice an toàn
+        const price = parseFloat(product.price) || 0;
+        const totalPrice = price * quantity;
+
+        console.log('Price calculation:', {
+            price,
+            quantity,
+            totalPrice,
+            formattedPrice: totalPrice.toLocaleString('vi-VN') + ' VNĐ',
+        });
+
+        // Kiểm tra giá trị totalPrice có vượt quá giới hạn database không
+        // DECIMAL(10,2) có thể chứa tối đa 99,999,999.99
+        if (totalPrice > 99999999.99) {
+            const maxQuantity = Math.floor(99999999.99 / price);
+            throw new BadRequestError(
+                `Tổng giá trị ${totalPrice.toLocaleString('vi-VN')} VNĐ vượt quá giới hạn cho phép (99,999,999 VNĐ). ` +
+                    `Số lượng tối đa có thể đặt: ${maxQuantity}`,
+            );
+        }
+
+        // Làm tròn totalPrice về 2 chữ số thập phân
+        const finalTotalPrice = Math.round(totalPrice * 100) / 100;
+
+        try {
+            // Cập nhật build PC cart
+            await cartItem.update({
+                quantity,
+                totalPrice: finalTotalPrice,
+            });
+
+            console.log('Update successful:', { quantity, totalPrice: finalTotalPrice });
+
+            new OK({
+                message: 'Cập nhật số lượng thành công',
+                metadata: { quantity, totalPrice: finalTotalPrice },
+            }).send(res);
+        } catch (error) {
+            console.error('Database update error:', error);
+            throw new BadRequestError('Không thể cập nhật số lượng. Lỗi cơ sở dữ liệu!');
+        }
     }
 }
 

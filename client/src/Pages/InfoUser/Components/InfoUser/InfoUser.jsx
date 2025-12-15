@@ -1,14 +1,16 @@
-import React, { useEffect } from 'react';
-import { Form, Input, Button, Card, Select, message } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Form, Input, Button, Card, Select, message, Avatar, Upload } from 'antd';
+import { UserOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import styles from './InfoUser.module.scss';
 import classNames from 'classnames/bind';
 import { useStore } from '../../../../hooks/useStore';
-import { requestUpdateUser } from '../../../../config/request';
+import { requestUpdateUser, requestUploadAvatar, requestDeleteAvatar } from '../../../../config/request';
 
 const cx = classNames.bind(styles);
 
 function InfoUser() {
     const [form] = Form.useForm();
+    const [avatarLoading, setAvatarLoading] = useState(false);
 
     const { dataUser, fetchAuth } = useStore();
 
@@ -27,6 +29,57 @@ function InfoUser() {
         }
     };
 
+    const handleAvatarUpload = async (info) => {
+        if (info.file.status === 'uploading') {
+            setAvatarLoading(true);
+            return;
+        }
+
+        const file = info.file.originFileObj || info.file;
+
+        // Validate file type
+        const isImage = file.type?.startsWith('image/');
+        if (!isImage) {
+            message.error('Chỉ được upload file ảnh!');
+            setAvatarLoading(false);
+            return;
+        }
+
+        // Validate file size (5MB)
+        const isLt5M = file.size / 1024 / 1024 < 5;
+        if (!isLt5M) {
+            message.error('File ảnh phải nhỏ hơn 5MB!');
+            setAvatarLoading(false);
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('avatar', file);
+
+            await requestUploadAvatar(formData);
+            await fetchAuth();
+            message.success('Upload avatar thành công!');
+        } catch (error) {
+            message.error('Upload avatar thất bại!');
+        } finally {
+            setAvatarLoading(false);
+        }
+    };
+
+    const handleDeleteAvatar = async () => {
+        try {
+            setAvatarLoading(true);
+            await requestDeleteAvatar();
+            await fetchAuth();
+            message.success('Xóa avatar thành công!');
+        } catch (error) {
+            message.error('Xóa avatar thất bại!');
+        } finally {
+            setAvatarLoading(false);
+        }
+    };
+
     useEffect(() => {
         form.setFieldsValue({
             fullName: dataUser?.fullName,
@@ -38,6 +91,38 @@ function InfoUser() {
 
     return (
         <Card title="Cập nhật thông tin cá nhân" className={cx('info-card')}>
+            {/* Avatar Section */}
+            <div className={cx('avatar-section')}>
+                <div className={cx('avatar-container')}>
+                    <Avatar size={120} src={dataUser?.avatar} icon={<UserOutlined />} className={cx('avatar')} />
+                    <div className={cx('avatar-actions')}>
+                        <Upload
+                            name="avatar"
+                            showUploadList={false}
+                            beforeUpload={() => false}
+                            onChange={handleAvatarUpload}
+                            accept="image/*"
+                        >
+                            <Button icon={<UploadOutlined />} loading={avatarLoading} size="small">
+                                {dataUser?.avatar ? 'Đổi avatar' : 'Thêm avatar'}
+                            </Button>
+                        </Upload>
+                        {dataUser?.avatar && (
+                            <Button
+                                icon={<DeleteOutlined />}
+                                danger
+                                size="small"
+                                loading={avatarLoading}
+                                onClick={handleDeleteAvatar}
+                            >
+                                Xóa
+                            </Button>
+                        )}
+                    </div>
+                </div>
+                <p className={cx('avatar-hint')}>Kích thước tối đa 5MB. Định dạng: JPG, PNG, GIF, WEBP</p>
+            </div>
+
             <Form
                 form={form}
                 layout="vertical"
@@ -80,7 +165,7 @@ function InfoUser() {
                         className={cx('form-item')}
                         rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}
                     >
-                        <Input />
+                        <Input placeholder="Nhập chi tiết địa chỉ nhà" />
                     </Form.Item>
                 </div>
 
@@ -94,7 +179,7 @@ function InfoUser() {
                             { pattern: /^[0-9]{10}$/, message: 'Số điện thoại không hợp lệ!' },
                         ]}
                     >
-                        <Input />
+                        <Input placeholder="Nhập số điện thoại" />
                     </Form.Item>
                 </div>
 
