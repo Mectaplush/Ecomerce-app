@@ -9,7 +9,7 @@ class OrderSearchService {
      * @param {string} query - User's search query
      * @param {string} userId - User ID to filter orders
      * @param {number} limit - Maximum number of results
-     * @returns {Array} Array of order results
+     * @returns {Promise<Array>} Array of order results
      */
     async searchOrders(query, userId, limit = 10) {
         try {
@@ -24,6 +24,8 @@ class OrderSearchService {
             const searchConditions = {
                 userId: userId // Always filter by user ID for security
             };
+
+            // console.log("UserId: ", userId);
 
             // Detect order status queries
             if (lowerQuery.includes('pending') || lowerQuery.includes('chờ')) {
@@ -57,6 +59,8 @@ class OrderSearchService {
                 limit: limit
             });
 
+            // console.log("Strict: ", orders);
+
             // If no orders found with specific conditions, try broader search
             if (orders.length === 0 && Object.keys(searchConditions).length > 1) {
                 const broadOrders = await paymentsModel.findAll({
@@ -70,11 +74,15 @@ class OrderSearchService {
                     limit: limit
                 });
 
+                //console.log("Broad: ", broadOrders);
+
                 // Filter based on text search in product names or order details
                 return this.filterOrdersByText(broadOrders, query);
             }
 
-            return orders.map(order => this.formatOrderResult(order));
+            let result = orders.map(order => this.formatOrderResult(order));
+            // console.log("Map Strict: ", result);
+            return result;
 
         } catch (error) {
             console.error('Error searching orders:', error);

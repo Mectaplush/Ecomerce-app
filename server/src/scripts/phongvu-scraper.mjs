@@ -1,0 +1,232 @@
+import axios from "axios";
+import fs from "fs";
+
+const API_URL = "https://discovery.tekoapis.com/api/v2/search-skus-v2";
+
+function convertToCSV(products) {
+    if (!products.length) return '';
+
+    // CSV headers
+    const headers = ['name', 'price', 'description', 'images', 'stock', 'categoryId', 'componentType'];
+
+    // Escape CSV values
+    const escapeCSV = (value) => {
+        if (value === null || value === undefined) return '';
+        const str = String(value);
+        // Escape quotes and wrap in quotes if contains comma, quote, or newline
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+    };
+
+    // Create CSV content
+    const csvRows = [
+        headers.join(','),
+        ...products.map(product =>
+            headers.map(header => escapeCSV(product[header])).join(',')
+        )
+    ];
+
+    return csvRows.join('\n');
+}
+
+async function fetchProductDetail(sku) {
+    const res = await axios.post(
+        "https://discovery.tekoapis.com/api/v1/product-detail",
+        {
+            terminalId: 4,
+            sku
+        },
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "Origin": "https://phongvu.vn",
+                "Referer": "https://phongvu.vn",
+                "User-Agent": "Mozilla/5.0"
+            }
+        }
+    );
+
+    return res.data?.data;
+}
+
+
+async function fetchPage({ slug, page }) {
+    const res = await axios.post(
+        API_URL,
+        {
+            terminalId: 4,
+            page,
+            pageSize: 40,
+            slug,
+            filter: {},
+            sorting: {
+                sort: "SORT_BY_CREATED_AT",
+                order: "ORDER_BY_DESCENDING"
+            },
+            isNeedFeaturedProducts: false
+        },
+        {
+            headers: {
+                "Content-Type": "application/json",
+                "Origin": "https://phongvu.vn",
+                "Referer": "https://phongvu.vn",
+                "User-Agent": "Mozilla/5.0"
+            }
+        }
+    );
+
+    return res.data;
+}
+
+async function scrapeCategory(slug, categoryId, componentType = "pc") {
+    let page = 1;
+    let allProducts = [];
+    let totalPages = 1;
+
+    do {
+        console.log(`Scraping page ${page}...`);
+
+        const data = await fetchPage({ slug, page });
+
+        // console.log("Fetched: ", data);
+
+        const products = data?.data?.products || [];
+        const pagination = data?.data?.pagination;
+
+        // allProducts.push(
+        //     ...products.map(p => ({
+        //         id: p.sku,
+        //         name: p.name || "Name Not Found",
+        //         price: p.latestPrice || 999999999,
+        //         description: p.shortDescription || "Description Not Found",
+        //         //finalPrice: p.finalPrice,
+        //         //brand: p.brand?.name,
+        //         images: p.imageUrl || "",
+        //         stock: p.totalAvailable || 0,
+        //         categoryId: categoryId,
+        //         componentType: componentType,
+        //         //url: `https://phongvu.vn/${p.slug}`
+        //     }))
+        // );
+
+        for (const p of products) {
+            try {
+                const detail = await fetchProductDetail(p.sku);
+
+                allProducts.push({
+                    id: p.sku,
+                    name: detail?.name || p.name,
+                    price: detail?.price?.latestPrice || p.latestPrice || 999999999,
+                    description: detail?.description || detail?.shortDescription || "",
+                    images: (detail?.images || []).map(i => i.url).join("|"),
+                    stock: detail?.stock?.totalAvailable || 0,
+                    categoryId,
+                    componentType
+                });
+
+                // IMPORTANT: slower rate for detail pages
+                await new Promise(r => setTimeout(r, 1200));
+
+            } catch (err) {
+                console.error(err);
+                console.error(`❌ Failed detail for SKU ${p.sku}`);
+            }
+        }
+
+        totalPages = pagination?.totalPages || page;
+        page++;
+
+        // rate limit
+        await new Promise(r => setTimeout(r, 800));
+
+    } while (page <= totalPages);
+
+    return allProducts;
+}
+
+const runScraper = async (category, categoryId, componentType = "pc") => {
+    const slug = `/c/${category}`; // ✅ category you want
+    const products = await scrapeCategory(slug, categoryId, componentType);
+
+    // Convert to CSV and save
+    const csvContent = convertToCSV(products);
+    fs.writeFileSync(
+        `phongvu-${category}.csv`,
+        csvContent
+    );
+
+    console.log(`✅ Saved ${products.length} products to CSV`);
+};
+
+
+let tasks = [{
+    category: "pc-gaming",
+    categoryId: "6b901f09-75b8-454f-999a-e6dab4907d88",
+    componentType: "pc"
+},
+{
+    category: "pc-ai-may-tinh-ai-tri-tue-nhan-tao",
+    categoryId: "6e725c98-b953-4f7d-bfc4-f5a68fe721db",
+    componentType: "pc"
+},
+{
+    category: "pc-do-hoa",
+    categoryId: "79f702e8-389b-4ba4-9aec-1ee5f9eaa21a",
+    componentType: "pc"
+},
+{
+    category: "pc-van-phong",
+    categoryId: "c0dfc09e-a202-4884-b29b-6cbaf38c5fe1",
+    componentType: "pc"
+}, {
+    category: "may-tinh-de-ban-mini",
+    categoryId: "d46001af-0595-472e-83d4-e437b3b565ba",
+    componentType: "pc"
+}, {
+    category: "cpu",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "cpu"
+}, {
+    category: "mainboard-bo-mach-chu",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "mainboard"
+}, {
+    category: "ram",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "ram"
+}, {
+    category: "o-cung-ssd",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "ssd"
+}, {
+    category: "o-cung-hdd",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "hdd"
+}, {
+    category: "vga-card-man-hinh",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "vga"
+}, {
+    category: "cpu",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "cpu"
+}, {
+    category: "psu-nguon-may-tinh",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "power"
+}, {
+    category: "tan-nhiet",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "cooler"
+}, {
+    category: "case",
+    categoryId: "751258d9-4091-4ce5-9b7e-ffb7a8513f34",
+    componentType: "case"
+},
+].map(({ category, categoryId, componentType }) =>
+    runScraper(category, categoryId, componentType).catch(err => console.error(`Error scraping ${category}:`, err))
+);
+
+await Promise.all(tasks);

@@ -57,23 +57,23 @@ class controllerUser {
         const refreshToken = await createRefreshToken({ id: dataUser.id });
         res.cookie('token', token, {
             httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
+            secure: process.env.NODE_ENV === 'production', // Only secure in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
             maxAge: 15 * 60 * 1000, // 15 phút
         });
 
         res.cookie('logged', 1, {
             httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
+            secure: process.env.NODE_ENV === 'production', // Only secure in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
         });
 
         // Đặt cookie HTTP-Only cho refreshToken (tùy chọn)
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
         });
 
@@ -101,20 +101,20 @@ class controllerUser {
         const refreshToken = await createRefreshToken({ id: findUser.id });
         res.cookie('token', token, {
             httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
+            secure: process.env.NODE_ENV === 'production', // Only secure in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
             maxAge: 15 * 60 * 1000, // 15 phút
         });
         res.cookie('logged', 1, {
             httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
+            secure: process.env.NODE_ENV === 'production', // Only secure in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
         });
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
-            secure: true,
-            sameSite: 'Strict',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
         });
         new OK({ message: 'Đăng nhập thành công', metadata: { token, refreshToken } }).send(res);
@@ -156,15 +156,15 @@ class controllerUser {
         const token = await createToken({ id: user.id });
         res.cookie('token', token, {
             httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
+            secure: process.env.NODE_ENV === 'production', // Only secure in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
             maxAge: 15 * 60 * 1000, // 15 phút
         });
 
         res.cookie('logged', 1, {
             httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
+            secure: process.env.NODE_ENV === 'production', // Only secure in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
         });
 
@@ -315,20 +315,20 @@ class controllerUser {
             const refreshToken = await createRefreshToken({ id: user.id });
             res.cookie('token', token, {
                 httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-                secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // Chống tấn công CSRF
+                secure: process.env.NODE_ENV === 'production', // Only secure in production
+                sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
                 maxAge: 15 * 60 * 1000, // 15 phút
             });
             res.cookie('logged', 1, {
                 httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-                secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // Chống tấn công CSRF
+                secure: process.env.NODE_ENV === 'production', // Only secure in production
+                sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
             });
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                secure: true,
-                sameSite: 'Strict',
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
             });
             new OK({ message: 'Đăng nhập thành công', metadata: { token, refreshToken } }).send(res);
@@ -344,20 +344,20 @@ class controllerUser {
             const refreshToken = await createRefreshToken({ id: newUser.id });
             res.cookie('token', token, {
                 httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-                secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // ChONGL tấn công CSRF
+                secure: process.env.NODE_ENV === 'production', // Only secure in production
+                sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
                 maxAge: 15 * 60 * 1000, // 15 phút
             });
             res.cookie('logged', 1, {
                 httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-                secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // ChONGL tấn công CSRF
+                secure: process.env.NODE_ENV === 'production', // Only secure in production
+                sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax', // Lax for development
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
             });
             res.cookie('refreshToken', refreshToken, {
                 httpOnly: true,
-                secure: true,
-                sameSite: 'Strict',
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'Strict' : 'Lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
             });
             new OK({ message: 'Đăng nhập thành công', metadata: { token, refreshToken } }).send(res);

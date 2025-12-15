@@ -371,7 +371,7 @@ class TypesenseEmbeddingService {
                     {
                         collection: this.embeddingsCollection,
                         q: '*',
-                        vector_query: `embedding:(${validatedQueryEmbedding.join(',')}, k:${topK})`,
+                        vector_query: `embedding:([${validatedQueryEmbedding.join(',')}], k:${topK})`,
                         filter_by: 'embeddingType:combined && embeddingMethod:clip',
                         per_page: topK
                     },
@@ -389,6 +389,9 @@ class TypesenseEmbeddingService {
             const multiSearchResults = await this.client.multiSearch.perform(multiSearchQueries);
             const vectorResults = multiSearchResults.results[0];
             const textResults = multiSearchResults.results[1];
+
+            // console.log("Query:", query);
+            // console.log("Multimodal search result", multiSearchResults);
 
             // Combine vector and text results with weighted scoring
             const combinedResults = new Map();

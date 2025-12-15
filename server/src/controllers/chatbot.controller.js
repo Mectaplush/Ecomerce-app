@@ -40,8 +40,10 @@ class ChatbotController {
         // Reverse to get chronological order (oldest first)
         const historyForContext = conversationHistory.reverse();
 
+        console.log("Messenger");
+
         // Get AI response with conversation context
-        const response = await askQuestion(question, images, historyForContext);
+        const response = await askQuestion(question, images, [], id);
 
         // Lưu tin nhắn của user
         await chatbotModel.create({

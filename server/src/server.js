@@ -20,6 +20,7 @@ const routes = require('./routes/index');
 const syncDatabase = require('./models/sync');
 const { initializeCollections } = require('./config/typesense');
 const { askQuestion } = require('./utils/Chatbot');
+const chatbotConversationModel = require('./models/chatbotConversation.model');
 
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -80,8 +81,39 @@ async function initializeServices() {
 initializeServices();
 
 app.post('/api/chat', async (req, res) => {
-    const { question, images } = req.body;
-    const data = await askQuestion(question, images);
+    const { question, images, userId } = req.body;
+    // Tìm hoặc tạo conversation cho user này
+    let conversation = await chatbotConversationModel.findOne({
+        where: { userId: id },
+        order: [['createdAt', 'DESC']],
+    });
+
+    if (!conversation) {
+        conversation = await chatbotConversationModel.create({
+            userId: id,
+            lastMessage: question,
+            messageCount: 0,
+        });
+    }
+
+    // Get recent conversation history for context (last 10 messages)
+    const conversationHistory = await chatbotModel.findAll({
+        where: {
+            userId: id,
+            conversationId: conversation.id
+        },
+        order: [['createdAt', 'DESC']],
+        limit: 10
+    });
+
+    // Reverse to get chronological order (oldest first)
+    // const historyForContext = conversationHistory.reverse();
+    const historyForContext = [];
+
+    console.log("Chat");
+
+    const data = await askQuestion(question, images, historyForContext, userId);
+
     return res.status(200).json(data);
 });
 

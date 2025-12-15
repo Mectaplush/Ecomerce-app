@@ -86,12 +86,14 @@ class RAGChatbot {
                 }
             }
 
+            // console.log("UserId: ", userId);
             // Step 3: Check if this is an order-related question and search orders
             if (question && userId) {
                 try {
                     const isOrderQuestion = await this.isOrderQuestion(question, conversationHistory);
+                    // console.log("IsOrderQuestion", isOrderQuestion);
                     if (isOrderQuestion) {
-                        orderResults = orderSearchService.searchOrders(question, userId);
+                        orderResults = await orderSearchService.searchOrders(question, userId);
                         console.log(`Found ${orderResults.length} order results`);
                     }
                 } catch (error) {
@@ -218,6 +220,8 @@ ${
                 }
             `;
 
+            // console.log("Prompt: ", prompt);
+
             const completion = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
                 messages: [
@@ -294,6 +298,7 @@ ${
 
             if (result.type === 'text' || !result.type) {
                 context += `\nSản phẩm: ${metadata?.name || 'N/A'}`;
+                context += `\nproductId: ${metadata?.productId}` || '';
                 if (metadata?.price) {
                     const finalPrice = metadata.discount > 0
                         ? metadata.price - (metadata.price * metadata.discount / 100)
@@ -495,7 +500,10 @@ Trả lời "yes" hoặc "no":`;
             const lowerQuestion = question.toLowerCase();
             const hasKeywords = orderKeywords.some(keyword => lowerQuestion.includes(keyword));
 
+            console.log("LQuestion: ", lowerQuestion);
+
             if (hasKeywords) return true;
+            return true;
 
             // Use AI for more sophisticated detection if no obvious keywords
             const recentHistory = conversationHistory
