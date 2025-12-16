@@ -1,0 +1,5 @@
+GET http://localhost:8108/collections
+x-typesense-api-key: xyz
+
+###
+
