@@ -12,6 +12,7 @@ import {
     Input,
     Form,
     Select,
+    Alert,
 } from 'antd';
 import styles from './ManagerOrder.module.scss';
 import classNames from 'classnames/bind';
@@ -38,6 +39,7 @@ function ManagerOrder() {
     const [form] = Form.useForm();
     const [productPreview, setProductPreview] = useState([]);
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [formError, setFormError] = useState(null);
 
     const fetchData = async () => {
         const res = await requestGetPayments();
@@ -88,14 +90,16 @@ function ManagerOrder() {
         setCurrentProduct(unrated || products[0] || null);
         setIsRatingModalOpen(true);
         form.resetFields();
+        setFormError(null); // Clear any previous errors
     };
 
     const handleRatingOk = () => {
+        setFormError(null); // Clear previous errors
         form.validateFields().then(async (values) => {
             try {
                 const targetId = ratingTargetProductId || currentProduct?.product?.id;
                 if (!targetId) {
-                    message.error('Vui lòng chọn sản phẩm để đánh giá');
+                    setFormError('Vui lòng chọn sản phẩm để đánh giá');
                     return;
                 }
                 const data = {
@@ -107,16 +111,36 @@ function ManagerOrder() {
                 message.success('Đánh giá sản phẩm thành công');
                 setIsRatingModalOpen(false);
                 form.resetFields();
+                setFormError(null);
                 // refresh previews so next time shows correct unrated list
                 await fetchProductPreview();
             } catch (error) {
-                message.error('Không thể đánh giá sản phẩm');
+                console.error('Rating submission error:', error);
+                
+                // Extract meaningful error message
+                let errorMessage = 'Không thể đánh giá sản phẩm';
+                if (error?.response?.data?.message) {
+                    errorMessage = error.response.data.message;
+                } else if (error?.message) {
+                    errorMessage = error.message;
+                } else if (typeof error === 'string') {
+                    errorMessage = error;
+                }
+                
+                setFormError(errorMessage);
+                
+                // Also show message for immediate feedback
+                message.error(errorMessage);
             }
+        }).catch((validateError) => {
+            // Handle form validation errors
+            setFormError('Vui lòng điền đầy đủ thông tin đánh giá');
         });
     };
 
     const handleRatingCancel = () => {
         setIsRatingModalOpen(false);
+        setFormError(null); // Clear errors when closing
     };
 
     const renderProductsDesktop = (products) => (
@@ -475,6 +499,19 @@ function ManagerOrder() {
             >
                 {isRatingModalOpen && (
                     <div className={cx('rating-container')}>
+                        {/* Display form error if exists */}
+                        {formError && (
+                            <Alert
+                                message="Lỗi đánh giá"
+                                description={formError}
+                                type="error"
+                                showIcon
+                                closable
+                                onClose={() => setFormError(null)}
+                                style={{ marginBottom: 16 }}
+                            />
+                        )}
+                        
                         {/* Product selector */}
                         <Form form={form} layout="vertical">
                             <Form.Item label={<Text strong>Chọn sản phẩm</Text>} required>

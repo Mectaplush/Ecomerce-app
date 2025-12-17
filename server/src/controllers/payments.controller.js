@@ -206,14 +206,11 @@ class PaymentsController {
             const orderDetails = await this.getOrderDetails(paymentId, id);
 
             // Sync order to Typesense
-            await this.syncOrderToTypesense(orderDetails, 'upsert');
+            // await this.syncOrderToTypesense(orderDetails, 'upsert');
 
             new OK({
                 message: 'Thanh toán thành công',
-                metadata: {
-                    paymentId,
-                    order: orderDetails
-                }
+                metadata: paymentId
             }).send(res);
         }
 
@@ -354,7 +351,7 @@ class PaymentsController {
 
             // Get order details and sync to Typesense
             const orderDetails = await this.getOrderDetails(paymentId, result);
-            await this.syncOrderToTypesense(orderDetails, 'upsert');
+            // await this.syncOrderToTypesense(orderDetails, 'upsert');
 
             // Store order details in session or pass via query params
             return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=MOMO`);
@@ -406,7 +403,7 @@ class PaymentsController {
 
             // Get order details and sync to Typesense
             const orderDetails = await this.getOrderDetails(paymentId, idCart);
-            await this.syncOrderToTypesense(orderDetails, 'upsert');
+            // await this.syncOrderToTypesense(orderDetails, 'upsert');
 
             // Store order details in session or pass via query params
             return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=VNPAY`);
@@ -503,7 +500,7 @@ class PaymentsController {
         const orderDetails = await this.getOrderDetails(orderId, id);
 
         // Sync updated order to Typesense
-        await this.syncOrderToTypesense(orderDetails, 'upsert');
+        // await this.syncOrderToTypesense(orderDetails, 'upsert');
 
         new OK({
             message: 'Hủy đơn hàng thành công',
@@ -652,7 +649,7 @@ class PaymentsController {
             const orderDetails = await this.getOrderDetails(order.idPayment);
 
             // Sync updated order to Typesense
-            await this.syncOrderToTypesense(orderDetails, 'upsert');
+            // await this.syncOrderToTypesense(orderDetails, 'upsert');
 
             new OK({
                 message: 'Cập nhật trạng thái đơn hàng thành công',
