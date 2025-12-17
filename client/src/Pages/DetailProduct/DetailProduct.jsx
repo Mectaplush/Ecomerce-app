@@ -126,7 +126,7 @@ function DetailProduct() {
         const review = productPreview.find((item) => item.id === reviewId);
         if (review) {
             setReviewToEdit(review);
-            setEditRating(review.rating);
+            setEditRating(review.rating / 2); // Convert database rating (1-10) to stars (0.5-5)
             setEditContent(review.content);
             setShowEditModal(true);
         }
@@ -146,7 +146,7 @@ function DetailProduct() {
 
             await requestUpdateProductPreview({
                 id: reviewToEdit.id,
-                rating: editRating,
+                rating: editRating * 2, // Convert stars (0.5-5) to database rating (1-10)
                 content: editContent.trim(),
             });
 
@@ -375,7 +375,7 @@ function DetailProduct() {
                             />
                             <div className={cx('review-content')}>
                                 <CustomRate
-                                    value={item.rating}
+                                    value={item.rating / 2} // Convert database rating (1-10) to stars (0.5-5)
                                     size={windowWidth <= 480 ? 12 : windowWidth <= 768 ? 14 : 16}
                                 />
                                 <h4>{item.user.name}</h4>

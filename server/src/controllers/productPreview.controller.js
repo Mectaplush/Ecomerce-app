@@ -255,9 +255,9 @@ class ProductPreviewController {
             throw new BadRequestError('Nội dung đánh giá quá dài. Vui lòng giới hạn trong 1000 ký tự.');
         }
 
-        // Validate rating
-        if (rating < 1 || rating > 5) {
-            throw new BadRequestError('Đánh giá phải từ 1 đến 5 sao.');
+        // Validate rating (expecting 1-10 from UI conversion)
+        if (rating < 1 || rating > 10) {
+            throw new BadRequestError('Đánh giá phải từ 0.5 đến 5 sao.');
         }
 
         const dataProductPreview = await productPreview.create({ productId, rating, content, userId });
@@ -294,8 +294,8 @@ class ProductPreviewController {
         }
 
         // Validate rating
-        if (rating < 1 || rating > 5) {
-            throw new BadRequestError('Đánh giá phải từ 1 đến 5 sao.');
+        if (rating < 1 || rating > 10) {
+            throw new BadRequestError('Đánh giá phải từ 0.5 đến 5 sao.');
         }
 
         // Kiểm tra xem review có thuộc về user hiện tại không

@@ -104,7 +104,7 @@ function ManagerOrder() {
                 }
                 const data = {
                     productId: targetId,
-                    rating: values.rating,
+                    rating: values.rating * 2, // Convert stars (0.5-5) to database rating (1-10)
                     content: values.content,
                 };
                 await requestCreateProductPreview(data);
