@@ -1,6 +1,5 @@
 // services/ragService.js
 import embeddingService from './embeddingService.js';
-import { openai } from '../config/pinecone.js';
 
 class MultimodalRAGService {
   async query(userQuery, options = {}) {
@@ -69,7 +68,7 @@ class MultimodalRAGService {
 
   async generateResponse(query, context, imageResults) {
     const imageUrls = imageResults.slice(0, 2).map(r => r.imageUrl).filter(Boolean);
-    
+
     const messages = [
       {
         role: "system",
