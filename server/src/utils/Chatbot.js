@@ -2,7 +2,6 @@ const { OpenAI } = require('openai');
 // Use Typesense for embeddings and search
 const embeddingService = require('../services/typesenseEmbeddingService');
 require('dotenv').config();
-const openAiEmbeddingService = require('../services/embeddingService');
 const fs = require('node:fs/promises');
 
 // Import order search service
@@ -48,8 +47,8 @@ class RAGChatbot {
                 const imageProcessingPromises = imagesData.map(async (imageData, index) => {
                     try {
                         // Generate description for each image
-                        const description = await openAiEmbeddingService.generateImageDescription(imageData);
-                        
+                        const description = await embeddingService.generateImageDescription(imageData);
+
                         // Search with CLIP for this specific image
                         const clipResults = await embeddingService.searchMultimodal('', [imageData], {
                             topK: 8,
@@ -86,7 +85,7 @@ class RAGChatbot {
             // Step 2: Reformulate the query using conversation history AND image descriptions
             if (question && question.trim()) {
                 // Include image descriptions in query reformulation context
-                const contextForReformulation = imageDescriptions ? 
+                const contextForReformulation = imageDescriptions ?
                     `${question}\n\nNgười dùng cũng gửi kèm hình ảnh: ${imageDescriptions}` : question;
                 reformulatedQuery = await this.reformulateQuery(contextForReformulation, conversationHistory);
                 console.log(`Original query: ${question}`);
@@ -98,7 +97,7 @@ class RAGChatbot {
             if (question) {
                 try {
                     // Use both question and image descriptions for policy detection
-                    const questionWithImageContext = imageDescriptions ? 
+                    const questionWithImageContext = imageDescriptions ?
                         `${question}\n${imageDescriptions}` : question;
                     const isPolicyQuestion = await this.isPolicyQuestion(questionWithImageContext, conversationHistory);
                     if (isPolicyQuestion) {
@@ -125,7 +124,7 @@ class RAGChatbot {
                 } catch (error) {
                     console.warn('Policy search failed, using fallback:', error.message);
                     try {
-                        const questionWithImageContext = imageDescriptions ? 
+                        const questionWithImageContext = imageDescriptions ?
                             `${question}\n${imageDescriptions}` : question;
                         const isPolicyQuestion = await this.isPolicyQuestion(questionWithImageContext, conversationHistory);
                         if (isPolicyQuestion) {
@@ -142,7 +141,7 @@ class RAGChatbot {
             // Step 4: Check if this is an order-related question and search orders (using image context)
             if (question && userId) {
                 try {
-                    const questionWithImageContext = imageDescriptions ? 
+                    const questionWithImageContext = imageDescriptions ?
                         `${question}\n${imageDescriptions}` : question;
                     const isOrderQuestion = await this.isOrderQuestion(questionWithImageContext, conversationHistory);
                     // console.log("IsOrderQuestion", isOrderQuestion);
@@ -176,7 +175,7 @@ class RAGChatbot {
             if (reformulatedQuery && reformulatedQuery.trim()) {
                 try {
                     // Enhance text search with image descriptions if available
-                    const enhancedQuery = imageDescriptions ? 
+                    const enhancedQuery = imageDescriptions ?
                         `${reformulatedQuery}. ${imageDescriptions}` : reformulatedQuery;
                     const textSearchResults = await embeddingService.searchMultimodal(enhancedQuery, imagesData, {
                         topK: 16,
@@ -217,7 +216,7 @@ class RAGChatbot {
             const vietnamTime = new Intl.DateTimeFormat('vi-VN', {
                 timeZone: 'Asia/Ho_Chi_Minh',
                 year: 'numeric',
-                month: 'long', 
+                month: 'long',
                 day: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit',
@@ -345,7 +344,7 @@ ${
                 if (result.content) {
                     context += ` - Nội dung: ${result.content}`;
                 }
-                
+
                 // Add createdAt and updatedAt information
                 if (metadata?.createdAt) {
                     const createdDate = new Date(metadata.createdAt * 1000); // Convert from Unix timestamp
@@ -357,7 +356,7 @@ ${
                     }).format(createdDate);
                     context += ` - Ngày thêm: ${createdTime}`;
                 }
-                
+
                 if (metadata?.updatedAt && metadata.updatedAt !== metadata.createdAt) {
                     const updatedDate = new Date(metadata.updatedAt * 1000); // Convert from Unix timestamp
                     const updatedTime = new Intl.DateTimeFormat('vi-VN', {
@@ -368,7 +367,7 @@ ${
                     }).format(updatedDate);
                     context += ` - Cập nhật cuối: ${updatedTime}`;
                 }
-                
+
                 context += ` (Độ liên quan: ${(score * 100).toFixed(1)}% - ${searchMethod})`;
             } else if (result.type === 'image') {
                 context += `\nHình ảnh sản phẩm: ${metadata?.name || 'N/A'}`;
@@ -547,7 +546,7 @@ Trả lời "yes" hoặc "no":`;
     async detectPurposeAndBudget(question, conversationHistory = [], imageDescriptions = '') {
         try {
             const fullContext = `${question}\n${imageDescriptions}\n${conversationHistory.slice(-5).map(msg => msg.content).join('\n')}`;
-            
+
             // Keywords for different professions and use cases
             const professionKeywords = {
                 doctor: ['bác sĩ', 'y tá', 'phòng khám', 'bệnh viện', 'chẩn đoán hình ảnh', 'x-ray', 'ct scan', 'mri', 'dicom', 'y khoa', 'medical'],
@@ -558,7 +557,7 @@ Trả lời "yes" hoặc "no":`;
                 engineer: ['kỹ sư', 'lập trình', 'developer', 'coding', 'autocad', 'solidworks', 'matlab'],
                 trader: ['đầu tư', 'chứng khoán', 'forex', 'crypto', 'trading', 'phân tích kỹ thuật']
             };
-            
+
             // Budget detection patterns
             const budgetPatterns = [
                 /(?:trong khoảng|ngân sách|budget|giá từ|từ)\s*([\d,\.]+)\s*(?:đến|-)\s*([\d,\.]+)/i,
@@ -566,10 +565,10 @@ Trả lời "yes" hoặc "no":`;
                 /(?:khoảng|xấp xỉ|around)\s*([\d,\.]+)/i,
                 /([\d,\.]+)\s*(?:triệu|tr|million)/i
             ];
-            
+
             let detectedProfession = null;
             let budgetRange = null;
-            
+
             // Detect profession
             const lowerContext = fullContext.toLowerCase();
             for (const [profession, keywords] of Object.entries(professionKeywords)) {
@@ -578,7 +577,7 @@ Trả lời "yes" hoặc "no":`;
                     break;
                 }
             }
-            
+
             // Detect budget
             for (const pattern of budgetPatterns) {
                 const match = fullContext.match(pattern);
@@ -601,14 +600,14 @@ Trả lời "yes" hoặc "no":`;
                     break;
                 }
             }
-            
+
             return {
                 hasPurpose: !!detectedProfession,
                 hasBudget: !!budgetRange,
                 profession: detectedProfession,
                 budget: budgetRange
             };
-            
+
         } catch (error) {
             console.error('Error detecting purpose and budget:', error);
             return { hasPurpose: false, hasBudget: false };
@@ -619,10 +618,10 @@ Trả lời "yes" hoặc "no":`;
     async generateAdvice(purposeAndBudget, searchResults) {
         try {
             const { profession, budget } = purposeAndBudget;
-            
+
             let advicePrompt = '';
             let budgetFilteredResults = searchResults;
-            
+
             // Filter results by budget if specified
             if (budget) {
                 budgetFilteredResults = searchResults.filter(result => {
@@ -635,7 +634,7 @@ Trả lời "yes" hoặc "no":`;
                     return true;
                 });
             }
-            
+
             // Generate profession-specific advice
             const professionAdvice = {
                 doctor: {
@@ -723,9 +722,9 @@ Trả lời "yes" hoặc "no":`;
                     software: 'Tối ưu cho trading platform, charting software, analysis tools'
                 }
             };
-            
+
             let adviceText = '';
-            
+
             // Add profession-specific advice
             if (profession && professionAdvice[profession]) {
                 const advice = professionAdvice[profession];
@@ -736,7 +735,7 @@ Trả lời "yes" hoặc "no":`;
                 });
                 adviceText += `\n**Phần mềm:** ${advice.software}\n`;
             }
-            
+
             // Add budget advice
             if (budget) {
                 adviceText += `\n\n💰 **Tư vấn ngân sách**\n`;
@@ -745,7 +744,7 @@ Trả lời "yes" hoặc "no":`;
                 } else if (budget.max) {
                     adviceText += `Ngân sách tối đa: ${budget.max.toLocaleString()} VND\n`;
                 }
-                
+
                 // Budget optimization advice
                 if (budget.max <= 15000000) {
                     adviceText += `- Ưu tiên CPU và RAM, card đồ họa có thể nâng cấp sau\n`;
@@ -760,20 +759,20 @@ Trả lời "yes" hoặc "no":`;
                     adviceText += `- Ưu tiên linh kiện chất lượng cao và bền bỉ\n`;
                     adviceText += `- Đầu tư làm mát và nguồn chất lượng\n`;
                 }
-                
+
                 // Show filtered results count
                 adviceText += `\n**Sản phẩm phù hợp ngân sách:** ${budgetFilteredResults.length} sản phẩm\n`;
             }
-            
+
             // Add general recommendations based on search results
             if (budgetFilteredResults.length > 0) {
                 const avgPrice = budgetFilteredResults.reduce((sum, result) => {
                     return sum + (result.metadata?.price || 0);
                 }, 0) / budgetFilteredResults.length;
-                
+
                 adviceText += `\n\n🎯 **Gợi ý dựa trên tìm kiếm:**\n`;
                 adviceText += `- Giá trung bình sản phẩm tìm thấy: ${Math.round(avgPrice).toLocaleString()} VND\n`;
-                
+
                 // Component type distribution
                 const componentTypes = {};
                 budgetFilteredResults.forEach(result => {
@@ -782,18 +781,18 @@ Trả lời "yes" hoặc "no":`;
                         componentTypes[type] = (componentTypes[type] || 0) + 1;
                     }
                 });
-                
+
                 if (Object.keys(componentTypes).length > 0) {
                     adviceText += `- Loại sản phẩm phổ biến: ${Object.entries(componentTypes)
-                        .sort(([,a], [,b]) => b - a)
+                        .sort(([, a], [, b]) => b - a)
                         .slice(0, 3)
                         .map(([type, count]) => `${type} (${count})`)
                         .join(', ')}\n`;
                 }
             }
-            
+
             return adviceText || '';
-            
+
         } catch (error) {
             console.error('Error generating advice:', error);
             return '';
@@ -866,7 +865,7 @@ Trả lời "yes" hoặc "no":`;
         }
 
         let context = '\n\nThông tin đơn hàng của khách hàng:\n';
-        
+
         // Group orders by orderId to handle multiple products per order
         const groupedOrders = {};
         orderResults.forEach(order => {
@@ -885,7 +884,7 @@ Trả lời "yes" hoặc "no":`;
 
         Object.values(groupedOrders).forEach((order, index) => {
             context += `${index + 1}. Đơn hàng #${order.orderId}\n`;
-            
+
             // List all products in the order
             if (order.products && order.products.length > 0) {
                 context += `   - Sản phẩm (${order.products.length} items):\n`;
@@ -897,7 +896,7 @@ Trả lời "yes" hoặc "no":`;
                     context += `\n`;
                 });
             }
-            
+
             context += `   - Tổng tiền: ${order.totalPrice?.toLocaleString()} VND\n`;
             context += `   - Trạng thái: ${order.status}\n`;
             context += `   - Phương thức thanh toán: ${order.paymentType}\n`;

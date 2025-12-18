@@ -812,6 +812,60 @@ class TypesenseEmbeddingService {
         }
         return 'image/jpeg'; // Default fallback
     }
+
+    async generateImageDescription(imageUrl) {
+        try {
+            // Fetch image data from URL
+            const imageResponse = await fetch(imageUrl);
+            if (!imageResponse.ok) {
+                throw new Error(`Failed to fetch image: ${imageResponse.statusText}`);
+            }
+
+            // Get image as buffer
+            const imageBuffer = await imageResponse.arrayBuffer();
+            const buffer = Buffer.from(imageBuffer);
+
+            // Detect MIME type
+            const mimeType = this.detectImageMimeType(buffer);
+
+            // Convert to base64
+            const base64Image = buffer.toString('base64');
+            const dataUrl = `data:${mimeType};base64,${base64Image}`;
+
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.api_key}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o",
+                    messages: [
+                        {
+                            role: "user",
+                            content: [
+                                {
+                                    type: "text",
+                                    text: "Describe this image in detail for search purposes:"
+                                },
+                                {
+                                    type: "image_url",
+                                    image_url: { url: dataUrl }
+                                }
+                            ]
+                        }
+                    ],
+                    max_tokens: 300
+                })
+            });
+
+            const result = await response.json();
+            return result.choices[0].message.content;
+        } catch (error) {
+            console.error('Image description error:', error);
+            return 'Image content description unavailable';
+        }
+    }
 }
 
 module.exports = new TypesenseEmbeddingService();

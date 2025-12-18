@@ -4,7 +4,6 @@ const chatbotModel = require('../models/chatbot.model');
 const chatbotConversationModel = require('../models/chatbotConversation.model');
 const userModel = require('../models/users.model');
 const { askQuestion, analyzeConversation } = require('../utils/Chatbot');
-const embeddingService = require('../services/embeddingService');
 
 class ChatbotController {
     async createMessager(req, res) {
