@@ -52,8 +52,6 @@ const modelProductPreview = require('../models/productPreview');
 const modelUser = require('../models/users.model');
 // Use Typesense for embeddings and search
 const embeddingService = require('../services/typesenseEmbeddingService');
-// Keep original service for fallback if needed
-// const pineconeEmbeddingService = require('../services/embeddingService');
 
 /**
      * Helper function to create embeddings for a product
@@ -889,14 +887,14 @@ class controllerProducts {
 
         try {
             let results = [];
-            
+
             // If search query exists, use Typesense multimodal search
             if (search && search.trim() !== '') {
                 console.log('Using Typesense search for query:', search);
                 results = await embeddingService.searchMultimodal(search.trim(), [], {
                     topK: 100 // Get more results for filtering
                 });
-                
+
                 // Convert Typesense results to product objects
                 if (results.length > 0) {
                     const productIds = results.map(r => r.productId);
@@ -905,7 +903,7 @@ class controllerProducts {
                             id: { [Op.in]: productIds }
                         }
                     });
-                    
+
                     // Maintain Typesense ranking order
                     const productMap = new Map(products.map(p => [p.id, p]));
                     results = results.map(r => productMap.get(r.productId)).filter(Boolean);
@@ -916,7 +914,7 @@ class controllerProducts {
                 // No search query, get all products with traditional method
                 let whereClause = {};
                 let order = [];
-                
+
                 // Handle sorting
                 switch (sort) {
                     case 'price-asc':
@@ -931,13 +929,13 @@ class controllerProducts {
                     default: // newest
                         order.push(['createdAt', 'DESC']);
                 }
-                
+
                 results = await modelProducts.findAll({
                     where: whereClause,
                     order,
                 });
             }
-            
+
             // Apply price filtering
             if (minPrice || maxPrice) {
                 results = results.filter(product => {
@@ -947,13 +945,13 @@ class controllerProducts {
                     return true;
                 });
             }
-            
+
             // Apply product ID filtering if specified
             if (productIds) {
                 const ids = productIds.split(',');
                 results = results.filter(product => ids.includes(product.id));
             }
-            
+
             // Apply sorting for non-search queries or re-sort if needed
             if (sort && (!search || search.trim() === '')) {
                 switch (sort) {
@@ -976,45 +974,45 @@ class controllerProducts {
                         break;
                 }
             }
-            
+
             console.log(`Product search completed: ${results.length} results`);
-            
+
             new OK({
                 message: 'Get product search successfully',
                 metadata: results,
             }).send(res);
-            
+
         } catch (error) {
             console.error('Product search error:', error);
-            
+
             // Fallback to traditional search if Typesense fails
             let whereClause = {};
             let order = [['createdAt', 'DESC']];
-            
+
             if (search && search.trim() !== '') {
                 whereClause.name = {
                     [Op.like]: `%${search}%`,
                 };
             }
-            
+
             if (minPrice || maxPrice) {
                 whereClause.price = {};
                 if (minPrice) whereClause.price[Op.gte] = minPrice;
                 if (maxPrice) whereClause.price[Op.lte] = maxPrice;
             }
-            
+
             if (productIds) {
                 const ids = productIds.split(',');
                 whereClause.id = {
                     [Op.in]: ids,
                 };
             }
-            
+
             const products = await modelProducts.findAll({
                 where: whereClause,
                 order,
             });
-            
+
             new OK({
                 message: 'Get product search successfully (fallback)',
                 metadata: products,
@@ -1027,29 +1025,29 @@ class controllerProducts {
 
         try {
             let results = [];
-            
+
             // If search query exists, use Typesense multimodal search
             if (search && search.trim() !== '') {
                 console.log('Using Typesense search for category query:', search, 'category:', category);
-                
+
                 // Use Typesense search with category filtering
                 const searchOptions = {
                     topK: 100,
                     filters: {}
                 };
-                
+
                 // Add category filter if specified
                 if (category && category !== 'all') {
                     searchOptions.filters.categoryId = category;
                 }
-                
+
                 // Add componentType filter if specified
                 if (componentType) {
                     searchOptions.filters.componentType = componentType;
                 }
-                
+
                 results = await embeddingService.searchMultimodal(search.trim(), [], searchOptions);
-                
+
                 // Convert Typesense results to product objects
                 if (results.length > 0) {
                     const productIds = results.map(r => r.productId);
@@ -1058,7 +1056,7 @@ class controllerProducts {
                             id: { [Op.in]: productIds }
                         }
                     });
-                    
+
                     // Maintain Typesense ranking order and apply filters
                     const productMap = new Map(products.map(p => [p.id, p]));
                     results = results.map(r => productMap.get(r.productId)).filter(product => {
@@ -1074,7 +1072,7 @@ class controllerProducts {
                 // No search query, get products by category with traditional method
                 let whereClause = {};
                 let order = [];
-                
+
                 // Handle sorting
                 switch (sort) {
                     case 'price-asc':
@@ -1089,23 +1087,23 @@ class controllerProducts {
                     default: // newest
                         order.push(['createdAt', 'DESC']);
                 }
-                
+
                 // Add category condition
                 if (category && category !== 'all') {
                     whereClause.categoryId = category;
                 }
-                
+
                 // Add componentType condition
                 if (componentType) {
                     whereClause.componentType = componentType;
                 }
-                
+
                 results = await modelProducts.findAll({
                     where: whereClause,
                     order,
                 });
             }
-            
+
             // Apply price filtering
             if (minPrice || maxPrice) {
                 results = results.filter(product => {
@@ -1115,13 +1113,13 @@ class controllerProducts {
                     return true;
                 });
             }
-            
+
             // Apply product ID filtering if specified
             if (productIds) {
                 const ids = productIds.split(',');
                 results = results.filter(product => ids.includes(product.id));
             }
-            
+
             // Apply sorting for non-search queries or re-sort if needed
             if (sort && (!search || search.trim() === '')) {
                 switch (sort) {
@@ -1144,53 +1142,53 @@ class controllerProducts {
                         break;
                 }
             }
-            
+
             console.log(`Category search completed: ${results.length} results`);
-            
+
             new OK({
                 message: 'Get product search by category successfully',
                 metadata: results,
             }).send(res);
-            
+
         } catch (error) {
             console.error('Product category search error:', error);
-            
+
             // Fallback to traditional search if Typesense fails
             let whereClause = {};
             let order = [['createdAt', 'DESC']];
-            
+
             if (category && category !== 'all') {
                 whereClause.categoryId = category;
             }
-            
+
             if (componentType) {
                 whereClause.componentType = componentType;
             }
-            
+
             if (search && search.trim() !== '') {
                 whereClause.name = {
                     [Op.like]: `%${search}%`,
                 };
             }
-            
+
             if (minPrice || maxPrice) {
                 whereClause.price = {};
                 if (minPrice) whereClause.price[Op.gte] = minPrice;
                 if (maxPrice) whereClause.price[Op.lte] = maxPrice;
             }
-            
+
             if (productIds) {
                 const ids = productIds.split(',');
                 whereClause.id = {
                     [Op.in]: ids,
                 };
             }
-            
+
             const products = await modelProducts.findAll({
                 where: whereClause,
                 order,
             });
-            
+
             // Sorting for fallback
             if (sort === 'price-asc' || sort === 'price-desc') {
                 products.sort((a, b) => {
@@ -1199,7 +1197,7 @@ class controllerProducts {
                     return sort === 'price-asc' ? priceA - priceB : priceB - priceA;
                 });
             }
-            
+
             new OK({
                 message: 'Get product search by category successfully (fallback)',
                 metadata: products,
