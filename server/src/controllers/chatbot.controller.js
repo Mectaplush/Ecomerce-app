@@ -42,7 +42,7 @@ class ChatbotController {
         console.log("Messenger");
 
         // Get AI response with conversation context
-        const response = await askQuestion(question, images, [], id);
+        const response = await askQuestion(question, images, historyForContext, id);
 
         // Lưu tin nhắn của user
         await chatbotModel.create({

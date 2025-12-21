@@ -20,10 +20,10 @@ async function base64ToRawImage(base64) {
 class TypesenseEmbeddingService {
     constructor() {
         this.api_key = process.env.OPENAI_API_KEY;
-        this.embeddings = new OpenAIEmbeddings({
-            apiKey: process.env.OPENAI_API_KEY,
-            modelName: "text-embedding-3-small",
-        });
+        // this.embeddings = new OpenAIEmbeddings({
+        //     apiKey: process.env.OPENAI_API_KEY,
+        //     modelName: "text-embedding-3-small",
+        // });
 
         this.tokenizerTask = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
         this.textModelTask = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');

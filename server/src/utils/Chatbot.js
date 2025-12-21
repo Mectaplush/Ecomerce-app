@@ -83,7 +83,7 @@ class RAGChatbot {
             }
 
             // Step 2: Reformulate the query using conversation history AND image descriptions
-            if (question && question.trim()) {
+            if (question && question.trim() || imageDescriptions) {
                 // Include image descriptions in query reformulation context
                 const contextForReformulation = imageDescriptions ?
                     `${question}\n\nNgười dùng cũng gửi kèm hình ảnh: ${imageDescriptions}` : question;
@@ -255,7 +255,7 @@ ${
                 }
             `;
 
-            // console.log("Prompt: ", prompt);
+            console.log("Prompt: ", prompt);
 
             const completion = await openai.chat.completions.create({
                 model: 'gpt-4o-mini',
