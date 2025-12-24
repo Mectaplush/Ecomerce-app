@@ -502,7 +502,7 @@ function ManagerOrder() {
                         {/* Display form error if exists */}
                         {formError && (
                             <Alert
-                                message="Lỗi đánh giá"
+                                message="Đánh giá không được thực thi"
                                 description={formError}
                                 type="error"
                                 showIcon

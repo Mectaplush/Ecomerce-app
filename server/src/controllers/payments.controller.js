@@ -289,7 +289,7 @@ class PaymentsController {
 
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            const vnpayResponse = await vnpay.buildPaymentUrl({
+            const vnpayResponse = vnpay.buildPaymentUrl({
                 vnp_Amount: totalPrice,
                 vnp_IpAddr: '127.0.0.1', //
                 //vnp_TxnRef: `${findCart[0]?.userId} + ${paymentId}`, // Sử dụng paymentId thay vì singlePaymentId

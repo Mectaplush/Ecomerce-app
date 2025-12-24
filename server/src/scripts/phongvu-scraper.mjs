@@ -32,13 +32,13 @@ function convertToCSV(products) {
 }
 
 async function fetchProductDetail(sku) {
-    const res = await axios.post(
-        "https://discovery.tekoapis.com/api/v1/product-detail",
+    const res = await axios.get(
+        "https://discovery.tekoapis.com/api/v1/product",
         {
-            terminalId: 4,
-            sku
-        },
-        {
+            params: {
+                terminalCode: "phongvu",
+                sku
+            },
             headers: {
                 "Content-Type": "application/json",
                 "Origin": "https://phongvu.vn",
@@ -48,7 +48,7 @@ async function fetchProductDetail(sku) {
         }
     );
 
-    return res.data?.data;
+    return res.data?.result?.product;
 }
 
 
@@ -115,23 +115,34 @@ async function scrapeCategory(slug, categoryId, componentType = "pc") {
             try {
                 const detail = await fetchProductDetail(p.sku);
 
+                function get_description(detail) {
+                    let description = detail?.productDetail?.description || detail?.productDetail?.shortDescription || "";
+
+                    if (description || description == "Đang cập nhật")
+                        return detail?.productDetail?.shortDescription || "";
+
+                    return description;
+                }
+
                 allProducts.push({
                     id: p.sku,
-                    name: detail?.name || p.name,
-                    price: detail?.price?.latestPrice || p.latestPrice || 999999999,
-                    description: detail?.description || detail?.shortDescription || "",
-                    images: (detail?.images || []).map(i => i.url).join("|"),
-                    stock: detail?.stock?.totalAvailable || 0,
+                    name: detail?.productInfo?.name || p.name,
+                    price: detail?.prices?.latestPrice || p.latestPrice || 999999999,
+                    description: detail?.productDetail?.description || detail?.productDetail?.shortDescription || "",
+                    images: (detail?.productDetail.images || []).map(i => i.url).join(","),
+                    stock: detail?.availableQuantity || detail?.totalAvailable || Math.floor(Math.random() * (10 - 1 + 1)) + 1,
                     categoryId,
                     componentType
                 });
 
                 // IMPORTANT: slower rate for detail pages
                 await new Promise(r => setTimeout(r, 1200));
-
             } catch (err) {
                 console.error(err);
                 console.error(`❌ Failed detail for SKU ${p.sku}`);
+
+                // TEMP: short-circuit
+                throw err;
             }
         }
 
@@ -152,6 +163,9 @@ const runScraper = async (category, categoryId, componentType = "pc") => {
 
     // Convert to CSV and save
     const csvContent = convertToCSV(products);
+
+    console.log(csvContent);
+
     fs.writeFileSync(
         `phongvu-${category}.csv`,
         csvContent
@@ -226,7 +240,12 @@ let tasks = [{
     componentType: "case"
 },
 ].map(({ category, categoryId, componentType }) =>
-    runScraper(category, categoryId, componentType).catch(err => console.error(`Error scraping ${category}:`, err))
+    runScraper(category, categoryId, componentType).catch(err => {
+        console.error(`Error scraping ${category}:`, err)
+        // TEMP: short-circuit
+        throw err;
+    })
 );
 
 await Promise.all(tasks);
+// await tasks[0];

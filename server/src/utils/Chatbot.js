@@ -31,7 +31,10 @@ class RAGChatbot {
      * @param {string} userId - User ID for order search filtering (optional)
      */
     async askQuestion(question, imagesData, conversationHistory = [], userId = null) {
+        let stopwatch = process.hrtime();
+
         try {
+
             let searchResults = [];
             let imageDescriptions = '';
             let clipSearchResults = [];
@@ -296,6 +299,9 @@ ${
                 sources: [],
                 hasRelevantResults: false
             };
+        } finally {
+            const end = process.hrtime(stopwatch);
+            console.log(`Execution time: ${end[0]}s ${end[1] / 1000000}ms`);
         }
     }
 

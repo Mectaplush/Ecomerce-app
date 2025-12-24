@@ -117,7 +117,7 @@ async function checkInappropriateContent(text, userId = null) {
 
         return {
             isInappropriate,
-            reason: isInappropriate ? `Nội dung được phân loại là ${mappedLabel} với độ tin cậy ${(score * 100).toFixed(1)}%` : null,
+            reason: isInappropriate ? `Nội dung đánh giá của bạn đã bị từ chối vì được phân loại là ${mappedLabel} với độ tin cậy ${(score * 100).toFixed(1)}%. Xin hãy gửi lại báo cáo phù hợp với điều khoản của cửa hàng.` : null,
             score,
             label: mappedLabel
         };
