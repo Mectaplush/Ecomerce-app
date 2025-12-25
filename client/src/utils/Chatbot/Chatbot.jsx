@@ -1,9 +1,61 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import styles from './Chatbot.module.scss';
 import { requestChatbot, requestGetChatbot } from '../../config/request';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faComments, faTimes, faPaperclip, faImage, faTrash } from '@fortawesome/free-solid-svg-icons';
+
+// Memoized ReactMarkdown components outside component to prevent recreation
+const markdownComponents = {
+    p: ({ children }) => <p className={styles.markdownParagraph}>{children}</p>,
+    ul: ({ children }) => <ul className={styles.markdownList}>{children}</ul>,
+    ol: ({ children }) => <ol className={styles.markdownOrderedList}>{children}</ol>,
+    li: ({ children }) => <li className={styles.markdownListItem}>{children}</li>,
+    strong: ({ children }) => <strong className={styles.markdownBold}>{children}</strong>,
+    em: ({ children }) => <em className={styles.markdownItalic}>{children}</em>,
+    code: ({ children, inline }) => 
+        inline ? 
+            <code className={styles.markdownInlineCode}>{children}</code> : 
+            <code className={styles.markdownCodeBlock}>{children}</code>,
+    h1: ({ children }) => <h1 className={styles.markdownH1}>{children}</h1>,
+    h2: ({ children }) => <h2 className={styles.markdownH2}>{children}</h2>,
+    h3: ({ children }) => <h3 className={styles.markdownH3}>{children}</h3>,
+};
+
+// Memoized Message component outside main component for better performance
+const Message = memo(({ message, index }) => (
+    <div
+        className={`${styles.message} ${
+            message.sender === 'user' ? styles.userMessage : styles.botMessage
+        } ${message.sender === 'bot' && message.isMultimodal ? styles.multimodalMessage : ''} ${
+            message.sender === 'user' && message.images ? styles.hasImages : ''
+        }`}
+    >
+        <div className={styles.messageContent}>
+            {message.sender === 'bot' ? (
+                <div className={styles.markdownContent}>
+                    <ReactMarkdown components={markdownComponents}>
+                        {message.content}
+                    </ReactMarkdown>
+                </div>
+            ) : (
+                message.content
+            )}
+            {message.images && (
+                <div className={styles.messageImages}>
+                    {message.images.map((image, imgIndex) => (
+                        <img
+                            key={imgIndex}
+                            src={image}
+                            alt={`Uploaded ${imgIndex + 1}`}
+                            className={styles.messageImage}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    </div>
+));
 
 const Chatbot = () => {
     const [isOpen, setIsOpen] = useState(false);
@@ -20,8 +72,10 @@ const Chatbot = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    // Debounced scroll effect to reduce performance impact
     useEffect(() => {
-        scrollToBottom();
+        const timeoutId = setTimeout(scrollToBottom, 100);
+        return () => clearTimeout(timeoutId);
     }, [messages]);
 
     useEffect(() => {
@@ -148,55 +202,7 @@ const Chatbot = () => {
                     </div>
                     <div className={styles.messageList}>
                         {messages.map((message, index) => (
-                            <div
-                                key={index}
-                                className={`${styles.message} ${
-                                    message.sender === 'user' ? styles.userMessage : styles.botMessage
-                                } ${message.sender === 'bot' && message.isMultimodal ? styles.multimodalMessage : ''} ${
-                                    message.sender === 'user' && message.images ? styles.hasImages : ''
-                                }`}
-                            >
-                                <div className={styles.messageContent}>
-                                    {message.sender === 'bot' ? (
-                                        <div className={styles.markdownContent}>
-                                            <ReactMarkdown 
-                                                components={{
-                                                    // Custom components for better styling
-                                                    p: ({ children }) => <p className={styles.markdownParagraph}>{children}</p>,
-                                                    ul: ({ children }) => <ul className={styles.markdownList}>{children}</ul>,
-                                                    ol: ({ children }) => <ol className={styles.markdownOrderedList}>{children}</ol>,
-                                                    li: ({ children }) => <li className={styles.markdownListItem}>{children}</li>,
-                                                    strong: ({ children }) => <strong className={styles.markdownBold}>{children}</strong>,
-                                                    em: ({ children }) => <em className={styles.markdownItalic}>{children}</em>,
-                                                    code: ({ children, inline }) => 
-                                                        inline ? 
-                                                            <code className={styles.markdownInlineCode}>{children}</code> : 
-                                                            <code className={styles.markdownCodeBlock}>{children}</code>,
-                                                    h1: ({ children }) => <h1 className={styles.markdownH1}>{children}</h1>,
-                                                    h2: ({ children }) => <h2 className={styles.markdownH2}>{children}</h2>,
-                                                    h3: ({ children }) => <h3 className={styles.markdownH3}>{children}</h3>,
-                                                }}
-                                            >
-                                                {message.content}
-                                            </ReactMarkdown>
-                                        </div>
-                                    ) : (
-                                        message.content
-                                    )}
-                                    {message.images && (
-                                        <div className={styles.messageImages}>
-                                            {message.images.map((image, imgIndex) => (
-                                                <img
-                                                    key={imgIndex}
-                                                    src={image}
-                                                    alt={`Uploaded ${imgIndex + 1}`}
-                                                    className={styles.messageImage}
-                                                />
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
+                            <Message key={index} message={message} index={index} />
                         ))}
                         {isLoading && (
                             <div className={`${styles.message} ${styles.botMessage}`}>
