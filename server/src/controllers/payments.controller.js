@@ -3,6 +3,7 @@ const modelCart = require('../models/cart.model');
 
 const modelUsers = require('../models/users.model');
 const modelProducts = require('../models/products.model');
+const emailService = require('../services/email.service');
 
 const { BadRequestError } = require('../core/error.response');
 const { OK, Created } = require('../core/success.response');
@@ -208,6 +209,12 @@ class PaymentsController {
             // Sync order to Typesense
             // await this.syncOrderToTypesense(orderDetails, 'upsert');
 
+            // Send order confirmation email
+            const user = await modelUsers.findOne({ where: { id } });
+            if (user && user.email) {
+                await emailService.sendOrderConfirmation(user.email, orderDetails);
+            }
+
             new OK({
                 message: 'Thanh toán thành công',
                 metadata: paymentId
@@ -353,6 +360,12 @@ class PaymentsController {
             const orderDetails = await this.getOrderDetails(paymentId, result);
             // await this.syncOrderToTypesense(orderDetails, 'upsert');
 
+            // Send order confirmation email
+            const user = await modelUsers.findOne({ where: { id: result } });
+            if (user && user.email) {
+                await emailService.sendOrderConfirmation(user.email, orderDetails);
+            }
+
             // Store order details in session or pass via query params
             return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=MOMO`);
 
@@ -404,6 +417,12 @@ class PaymentsController {
             // Get order details and sync to Typesense
             const orderDetails = await this.getOrderDetails(paymentId, idCart);
             // await this.syncOrderToTypesense(orderDetails, 'upsert');
+
+            // Send order confirmation email
+            const user = await modelUsers.findOne({ where: { id: idCart } });
+            if (user && user.email) {
+                await emailService.sendOrderConfirmation(user.email, orderDetails);
+            }
 
             // Store order details in session or pass via query params
             return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=VNPAY`);
@@ -650,6 +669,12 @@ class PaymentsController {
 
             // Sync updated order to Typesense
             // await this.syncOrderToTypesense(orderDetails, 'upsert');
+
+            // Send order status update email
+            const user = await modelUsers.findOne({ where: { id: orderDetails.userId } });
+            if (user && user.email) {
+                await emailService.sendOrderStatusUpdate(user.email, orderDetails);
+            }
 
             new OK({
                 message: 'Cập nhật trạng thái đơn hàng thành công',
