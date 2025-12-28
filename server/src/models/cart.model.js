@@ -30,8 +30,19 @@ const cart = connect.define(
             allowNull: true,
         },
         address: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(500),
             allowNull: true,
+            validate: {
+                len: {
+                    args: [10, 500],
+                    msg: 'Địa chỉ phải có từ 10 đến 500 ký tự'
+                },
+                isValidAddress(value) {
+                    if (value && !/^[\p{L}\p{N}\s,.\-/()]+$/u.test(value)) {
+                        throw new Error('Địa chỉ chứa ký tự không hợp lệ');
+                    }
+                }
+            }
         },
         totalPrice: {
             type: DataTypes.INTEGER,

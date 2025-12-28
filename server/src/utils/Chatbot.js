@@ -250,7 +250,7 @@ Câu hỏi gốc của khách hàng: ${question || 'Khách hàng đã gửi hìn
 Truy vấn đã được tối ưu: ${reformulatedQuery}
 
 Url gốc cúa sản phẩm:
-baseUrl = ${process.env.FRONTEND_HOST || 'http://localhost:5173'}
+baseUrl = ${process.env.CLIENT_BASE_URL || 'http://localhost:5173'}
 
 ${
                 // Moved to file so prompt can be updated at runtime

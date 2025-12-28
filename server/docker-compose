@@ -1,4 +1,4 @@
-# Docker Compose for Typesense local development
+# Docker Compose for Typesense and MySQL local development
 version: '3.8'
 
 services:
@@ -15,8 +15,22 @@ services:
       - typesense_data:/data
     command: '--data-dir /data --api-key=xyz --listen-port 8108 --enable-cors'
 
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    ports:
+      - "${MYSQL_PORT}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+
 volumes:
   typesense_data:
+    driver: local
+  mysql_data:
     driver: local
 
 # To start Typesense:
@@ -30,3 +44,22 @@ volumes:
 
 # Typesense will be available at:
 # http://localhost:8108
+
+# To start MySQL:
+# docker-compose up -d mysql
+
+# To stop MySQL:
+# docker-compose down
+
+# To view MySQL logs:
+# docker-compose logs -f mysql
+
+# MySQL will be available at:
+# Host: localhost
+# Port: Check MYSQL_PORT in .env file (default: 3306)
+# Database: Check DB_NAME in .env file
+# Username: Check DB_USER in .env file
+# Password: Check DB_PASSWORD in .env file
+
+# To start both services:
+# docker-compose up -d

@@ -1,6 +1,7 @@
 import classNames from 'classnames/bind';
 import styles from './Cart.module.scss';
 import Header from '../../Components/Header/Header';
+import AddressAutocomplete from '../../Components/AddressAutocomplete/AddressAutocomplete';
 import { Card, Table, Input, Form, Button, Checkbox, Space, message, InputNumber } from 'antd';
 import { DeleteOutlined, PhoneOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
@@ -376,14 +377,10 @@ function Cart() {
                                         />
                                     </Form.Item>
 
-                                    <Form.Item label="Địa chỉ" required className="address-input">
-                                        <Input
-                                            value={address}
-                                            onChange={(e) => setAddress(e.target.value)}
-                                            placeholder="Nhập địa chỉ chi tiết (số nhà, đường, phường/xã, quận/huyện, tỉnh/thành)"
-                                            prefix={<EnvironmentOutlined style={{ color: '#bbb' }} />}
-                                        />
-                                    </Form.Item>
+                                    <AddressAutocomplete
+                                        value={address}
+                                        onChange={setAddress}
+                                    />
 
                                     <Form.Item label="Ghi chú">
                                         <Input.TextArea

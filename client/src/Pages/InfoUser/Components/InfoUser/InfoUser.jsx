@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Form, Input, Button, Card, Select, message, Avatar, Upload } from 'antd';
 import { UserOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
+import AddressAutocomplete from '../../../../Components/AddressAutocomplete/AddressAutocomplete';
 import styles from './InfoUser.module.scss';
 import classNames from 'classnames/bind';
 import { useStore } from '../../../../hooks/useStore';
@@ -11,14 +12,21 @@ const cx = classNames.bind(styles);
 function InfoUser() {
     const [form] = Form.useForm();
     const [avatarLoading, setAvatarLoading] = useState(false);
+    const [address, setAddress] = useState('');
 
     const { dataUser, fetchAuth } = useStore();
+
+    useEffect(() => {
+        if (dataUser?.address) {
+            setAddress(dataUser.address);
+        }
+    }, [dataUser]);
 
     const onFinish = async (values) => {
         try {
             const data = {
                 fullName: values.fullName,
-                address: values.address,
+                address: address,
                 phone: values.phone,
             };
             await requestUpdateUser(data);
@@ -158,16 +166,11 @@ function InfoUser() {
                     </Form.Item>
                 </div>
 
-                <div className={cx('form-row')}>
-                    <Form.Item
-                        name="address"
-                        label="Địa chỉ nhà"
-                        className={cx('form-item')}
-                        rules={[{ required: true, message: 'Vui lòng nhập địa chỉ!' }]}
-                    >
-                        <Input placeholder="Nhập chi tiết địa chỉ nhà" />
-                    </Form.Item>
-                </div>
+                <AddressAutocomplete
+                    value={address}
+                    onChange={setAddress}
+                    form={form}
+                />
 
                 <div className={cx('form-row')}>
                     <Form.Item

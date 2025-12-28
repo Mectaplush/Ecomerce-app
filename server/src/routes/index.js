@@ -7,6 +7,7 @@ const productPreviewRoutes = require('./productPreview.routes');
 const blogsRoutes = require('./blogs.routes');
 const contactRoutes = require('./contact.routes');
 const typesenseSearchRoutes = require('./typesenseSearch.routes');
+const addressRoutes = require('./address.routes');
 const multer = require('multer');
 const path = require('path');
 const chatbotRoutes = require('./chatbot.routes');
@@ -105,6 +106,9 @@ function routes(app) {
     //// contact
     app.post('/api/create-contact', contactRoutes);
     app.get('/api/get-contacts', contactRoutes);
+
+    //// address
+    app.use('/api', addressRoutes);
 
     app.post('/api/upload', upload.single('image'), (req, res) => {
         const file = req.file;
