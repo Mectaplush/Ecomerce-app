@@ -55,7 +55,7 @@
     display: inline-block;
     margin-bottom: 30px !important;
 }
-
+    
 .page-title:after {
     content: '';
     position: absolute;

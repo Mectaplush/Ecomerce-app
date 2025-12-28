@@ -8,6 +8,7 @@ const blogsRoutes = require('./blogs.routes');
 const contactRoutes = require('./contact.routes');
 const typesenseSearchRoutes = require('./typesenseSearch.routes');
 const addressRoutes = require('./address.routes');
+const aiPcBuilderRoutes = require('./aiPcBuilder.routes');
 const multer = require('multer');
 const path = require('path');
 const chatbotRoutes = require('./chatbot.routes');
@@ -81,6 +82,9 @@ function routes(app) {
     app.post('/api/update-quantity', cartRoutes);
     app.get('/api/get-cart-build-pc', cartRoutes);
     app.post('/api/delete-all-cart-build-pc', cartRoutes);
+    
+    //// AI PC Builder
+    app.post('/api/ai-recommend-components', aiPcBuilderRoutes);
     ///// payments
     app.post('/api/payments', paymentsRoutes);
     app.get('/api/check-payment-momo', paymentsRoutes);

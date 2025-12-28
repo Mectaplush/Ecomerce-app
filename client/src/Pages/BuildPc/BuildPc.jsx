@@ -28,6 +28,7 @@ import {
     requestUpdateQuantityCartBuildPc,
     requestAddToCartBuildPcToCart,
     requestDeleteAllCartBuildPC,
+    requestAIRecommendComponents,
 } from '../../config/request';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../hooks/useStore';
@@ -86,6 +87,12 @@ function BuildPc() {
 
     const [totalPrice, setTotalPrice] = useState(0);
     const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+    
+    // AI Auto-Select states
+    const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+    const [aiPurpose, setAiPurpose] = useState('');
+    const [aiBudget, setAiBudget] = useState('');
+    const [isAILoading, setIsAILoading] = useState(false);
 
     // Thêm state để track pending changes
     const [pendingQuantityChanges, setPendingQuantityChanges] = useState({});
@@ -461,6 +468,66 @@ function BuildPc() {
         }
     };
 
+    // AI Auto-Select function
+    const handleAIAutoSelect = async () => {
+        if (!aiPurpose || !aiPurpose.trim()) {
+            message.error('Vui lòng nhập mục đích sử dụng');
+            return;
+        }
+
+        const budgetValue = parseFloat(aiBudget);
+        if (!budgetValue || budgetValue <= 0) {
+            message.error('Vui lòng nhập ngân sách hợp lệ');
+            return;
+        }
+
+        setIsAILoading(true);
+        try {
+            const response = await requestAIRecommendComponents({
+                purpose: aiPurpose,
+                budget: budgetValue,
+            });
+
+            if (response.metadata) {
+                message.success('🤖 AI đã chọn linh kiện phù hợp!');
+                
+                // Add each recommended component to cart
+                const componentTypes = Object.keys(response.metadata);
+                let successCount = 0;
+
+                for (const type of componentTypes) {
+                    const component = response.metadata[type];
+                    if (component && component.id) {
+                        try {
+                            await requestAddToCartBuildPc({
+                                productId: component.id,
+                                quantity: 1,
+                                componentType: type,
+                            });
+                            successCount++;
+                        } catch (error) {
+                            console.error(`Error adding ${type}:`, error);
+                        }
+                    }
+                }
+
+                // Refresh the data to show newly added components
+                await fetchData();
+                
+                setIsAIModalOpen(false);
+                setAiPurpose('');
+                setAiBudget('');
+                
+                message.success(`✅ Đã thêm ${successCount} linh kiện được AI đề xuất!`);
+            }
+        } catch (error) {
+            console.error('AI Auto-Select error:', error);
+            message.error('Không thể sử dụng tính năng AI. Vui lòng thử lại.');
+        } finally {
+            setIsAILoading(false);
+        }
+    };
+
     // Thêm function helper để tính max quantity
     const calculateMaxQuantity = (componentType) => {
         const stock = selectedComponents[componentType]?.stock || 1;
@@ -494,13 +561,40 @@ function BuildPc() {
                 <Card className={cx('build-card')}>
                     <Row justify="space-between" align="middle" className={cx('header')}>
                         <Title level={4}>🖥️ XÂY DỰNG MÁY TÍNH</Title>
-                        <Button type="primary" onClick={() => setIsResetModalOpen(true)}>
-                            🔄 LÀM MỚI
-                        </Button>
+                        <Space>
+                            <Button 
+                                type="default" 
+                                onClick={() => setIsAIModalOpen(true)}
+                                style={{
+                                    background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                    color: 'white',
+                                    border: 'none',
+                                    fontWeight: 600
+                                }}
+                            >
+                                🤖 AI TỰ ĐỘNG CHỌN
+                            </Button>
+                            <Button type="primary" onClick={() => setIsResetModalOpen(true)}>
+                                🔄 LÀM MỚI
+                            </Button>
+                        </Space>
                     </Row>
 
                     <div className={cx('description')}>
                         ✨ Vui lòng chọn linh kiện bạn cần để xây dựng cấu hình máy tính riêng cho bạn
+                    </div>
+                    
+                    <div className={cx('ai-hint')} style={{
+                        textAlign: 'center',
+                        margin: '16px 0',
+                        padding: '12px',
+                        background: 'linear-gradient(90deg, #f0f4ff, #e6f0ff, #f0f4ff)',
+                        borderRadius: '8px',
+                        color: '#667eea',
+                        fontSize: '14px',
+                        fontWeight: 500
+                    }}>
+                        💡 Mới: Không biết chọn gì? Thử tính năng <strong>AI Tự Động Chọn</strong> - chỉ cần nhập mục đích và ngân sách!
                     </div>
 
                     <div className={cx('components-list')}>
@@ -744,6 +838,142 @@ function BuildPc() {
                         }}
                         size="middle"
                     />
+                </Modal>
+
+                {/* AI Auto-Select Modal */}
+                <Modal
+                    title={
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: '18px', fontWeight: '600' }}>
+                            <span style={{ marginRight: '8px', fontSize: '24px' }}>🤖</span>
+                            AI Tự Động Chọn Linh Kiện
+                        </div>
+                    }
+                    open={isAIModalOpen}
+                    onCancel={() => {
+                        setIsAIModalOpen(false);
+                        setAiPurpose('');
+                        setAiBudget('');
+                    }}
+                    width={600}
+                    footer={[
+                        <Button 
+                            key="cancel" 
+                            onClick={() => {
+                                setIsAIModalOpen(false);
+                                setAiPurpose('');
+                                setAiBudget('');
+                            }}
+                            disabled={isAILoading}
+                        >
+                            ❌ HỦY
+                        </Button>,
+                        <Button 
+                            key="confirm" 
+                            type="primary" 
+                            onClick={handleAIAutoSelect}
+                            loading={isAILoading}
+                            style={{
+                                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                                border: 'none'
+                            }}
+                        >
+                            🚀 CHỌN TỰ ĐỘNG
+                        </Button>,
+                    ]}
+                >
+                    <div style={{ padding: '20px 0' }}>
+                        <div style={{ 
+                            background: 'linear-gradient(135deg, #f0f4ff, #e6f0ff)',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            marginBottom: '24px',
+                            border: '1px solid #d0e0ff'
+                        }}>
+                            <p style={{ margin: 0, color: '#667eea', fontSize: '14px', lineHeight: '1.6' }}>
+                                <strong>💡 Cách hoạt động:</strong><br/>
+                                AI sẽ phân tích mục đích sử dụng và ngân sách của bạn để tự động chọn các linh kiện phù hợp nhất.
+                                Bạn chỉ cần nhập thông tin và để AI làm phần còn lại!
+                            </p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ 
+                                display: 'block', 
+                                marginBottom: '8px', 
+                                fontWeight: 600,
+                                color: '#333'
+                            }}>
+                                🎯 Mục đích sử dụng:
+                            </label>
+                            <Input.TextArea
+                                placeholder="VD: Chơi game AAA, làm đồ họa 3D, streaming, lập trình, văn phòng, học tập..."
+                                value={aiPurpose}
+                                onChange={(e) => setAiPurpose(e.target.value)}
+                                rows={4}
+                                disabled={isAILoading}
+                                style={{
+                                    borderRadius: '8px',
+                                    border: '2px solid #e8e8e8',
+                                    fontSize: '14px'
+                                }}
+                            />
+                            <p style={{ 
+                                margin: '8px 0 0 0', 
+                                fontSize: '12px', 
+                                color: '#888',
+                                fontStyle: 'italic'
+                            }}>
+                                💬 Mô tả càng chi tiết, AI sẽ chọn càng chính xác
+                            </p>
+                        </div>
+
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ 
+                                display: 'block', 
+                                marginBottom: '8px', 
+                                fontWeight: 600,
+                                color: '#333'
+                            }}>
+                                💰 Ngân sách (VNĐ):
+                            </label>
+                            <InputNumber
+                                placeholder="VD: 20000000"
+                                value={aiBudget}
+                                onChange={(value) => setAiBudget(value)}
+                                disabled={isAILoading}
+                                style={{
+                                    width: '100%',
+                                    borderRadius: '8px',
+                                    border: '2px solid #e8e8e8',
+                                }}
+                                formatter={value => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                parser={value => value.replace(/\$\s?|(,*)/g, '')}
+                                min={0}
+                                controls={false}
+                            />
+                            <p style={{ 
+                                margin: '8px 0 0 0', 
+                                fontSize: '12px', 
+                                color: '#888',
+                                fontStyle: 'italic'
+                            }}>
+                                💵 Nhập tổng ngân sách bạn dự định chi cho toàn bộ cấu hình
+                            </p>
+                        </div>
+
+                        <div style={{
+                            background: '#fff9e6',
+                            padding: '12px',
+                            borderRadius: '8px',
+                            border: '1px solid #ffe4a3',
+                            marginTop: '16px'
+                        }}>
+                            <p style={{ margin: 0, fontSize: '13px', color: '#856404' }}>
+                                ⚠️ <strong>Lưu ý:</strong> Các linh kiện đã chọn trước đó sẽ không bị xóa. 
+                                AI sẽ chỉ thêm các linh kiện mới vào cấu hình của bạn.
+                            </p>
+                        </div>
+                    </div>
                 </Modal>
 
                 <Modal

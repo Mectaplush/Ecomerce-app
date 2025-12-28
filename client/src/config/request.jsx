@@ -143,6 +143,12 @@ export const requestReanalyzeAllConversations = async () => {
     return res.data;
 };
 
+// AI PC Builder
+export const requestAIRecommendComponents = async (data) => {
+    const res = await request.post('/api/ai-recommend-components', data);
+    return res.data;
+};
+
 export const requestUpdateCategory = async (data) => {
     const res = await request.post(`/api/update-category`, data);
     return res.data;

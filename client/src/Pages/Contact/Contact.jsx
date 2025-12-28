@@ -349,29 +349,30 @@ function Contact() {
                                 <div>
                                     <Title level={4}>Địa chỉ cửa hàng</Title>
                                     <Space direction="vertical" style={{ width: '100%' }}>
-                                        <Card size="small" title="SHOWROOM HÀ NỘI" style={{ marginBottom: '15px' }}>
-                                            <Space align="start">
+                                        <Card size="small" title="SHOWROOM TP.HỒ CHÍ MINH 1" style={{ marginBottom: '15px' }}>
+                                            <Space align="start" style={{display:'inline'}}>
                                                 <EnvironmentOutlined />
                                                 <Paragraph style={{ margin: 0 }}>
-                                                    83-85 Thái Hà, Trung Liệt, Đống Đa, Hà Nội
+                                                    1 Võ Văn Ngân, Thủ Đức, TP.HCM
                                                 </Paragraph>
                                             </Space>
-                                            <Space align="start">
+                                            <Space align="start"
+                                            style={{display:'inline'}}>
                                                 <PhoneOutlined />
-                                                <Paragraph style={{ margin: 0 }}>036.625.8142 (Liên hệ 24/7)</Paragraph>
+                                                <Paragraph style={{ margin: 0 }}>098.876.6543 (Liên hệ 24/7)</Paragraph>
                                             </Space>
                                         </Card>
 
-                                        <Card size="small" title="SHOWROOM HỒ CHÍ MINH">
-                                            <Space align="start">
+                                        <Card size="small" title="SHOWROOM TP HỒ CHÍ MINH 2">
+                                            <Space align="start" style={{display:'inline'}}>
                                                 <EnvironmentOutlined />
                                                 <Paragraph style={{ margin: 0 }}>
-                                                    40 Vĩnh Viễn, Phường 2, Quận 10, TP Hồ Chí Minh
+                                                    2 Tôn Đức Thắng, phường Bến Nghé quận 1, TP Hồ Chí Minh
                                                 </Paragraph>
                                             </Space>
-                                            <Space align="start">
+                                            <Space align="start" style={{display:'inline'}}>
                                                 <PhoneOutlined />
-                                                <Paragraph style={{ margin: 0 }}>087.997.9997 (Liên hệ 24/7)</Paragraph>
+                                                <Paragraph style={{ margin: 0 }}>012.234.5678 (Liên hệ 24/7)</Paragraph>
                                             </Space>
                                         </Card>
                                     </Space>
@@ -383,7 +384,7 @@ function Contact() {
                                     <Divider style={{ margin: '15px 0' }} />
 
                                     <Space direction="vertical" style={{ width: '100%' }}>
-                                        <Space align="start">
+                                        <Space align="start" style={{display:'inline'}}>
                                             <MailOutlined />
                                             <Text>weareone.pc@gmail.com</Text>
                                         </Space>

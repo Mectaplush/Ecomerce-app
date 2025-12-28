@@ -16,17 +16,17 @@ function Footer() {
                         <div className={cx('showroom-item')}>
                             <div className={cx('showroom-header')}>
                                 <div className={cx('showroom-number')}>1</div>
-                                <div className={cx('showroom-name')}>SHOWROOM - ĐỐNG ĐA - HÀ NỘI</div>
+                                <div className={cx('showroom-name')}>SHOWROOM - QUẬN 1 - HỒ CHÍ MINH</div>
                             </div>
                             <div className={cx('showroom-info')}>
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faMapMarkerAlt} />
-                                    <span>Địa chỉ: 83-85 Thái Hà,Trung Liệt, Đống Đa, Hà Nội</span>
+                                    <span>Địa chỉ: 1 Võ Văn Ngân, Thủ Đức, TP. Hồ Chí Minh</span>
                                 </div>
 
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faPhone} />
-                                    <span>Liên hệ 24/7 Tel: 036.625.8142</span>
+                                    <span>Liên hệ 24/7 Tel: 038.896.7992</span>
                                 </div>
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faClock} />
@@ -38,17 +38,17 @@ function Footer() {
                         <div className={cx('showroom-item')}>
                             <div className={cx('showroom-header')}>
                                 <div className={cx('showroom-number')}>2</div>
-                                <div className={cx('showroom-name')}>SHOWROOM QUẬN 10, HỒ CHÍ MINH</div>
+                                <div className={cx('showroom-name')}>SHOWROOM QUẬN 1, HỒ CHÍ MINH</div>
                             </div>
                             <div className={cx('showroom-info')}>
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faMapMarkerAlt} />
-                                    <span>Địa chỉ: Số 83A Cửu Long, Phường 15, Quận 10, TP Hồ Chí Minh</span>
+                                    <span>Địa chỉ: 2 Tôn Đức Thắng, phường Bến Nghé, Quận 1, TP. Hồ Chí Minh</span>
                                 </div>
 
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faPhone} />
-                                    <span>Liên hệ 24/7 Tel: 087.997.9997</span>
+                                    <span>Liên hệ 24/7 Tel: 078.623.0803</span>
                                 </div>
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faClock} />
