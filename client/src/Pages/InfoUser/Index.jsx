@@ -19,7 +19,7 @@ import ManagerOrder from './Components/ManagerOrder/ManagerOrder';
 import ManagerProductWatch from './Components/ManagerProductWatch/ManagerProductWatch';
 import { requestLogout } from '../../config/request';
 import Footer from '../../Components/Footer/Footer';
-
+ 
 const { Content, Sider } = Layout;
 const cx = classNames.bind(styles);
 
