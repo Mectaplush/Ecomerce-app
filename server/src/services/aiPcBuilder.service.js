@@ -157,7 +157,7 @@ Chú ý:
 
             if (suitableProducts.length === 0) {
                 // If no products in range, get closest ones
-                const sorted = [...products].sort((a, b) => 
+                const sorted = [...products].sort((a, b) =>
                     Math.abs(a.price - allocatedBudget) - Math.abs(b.price - allocatedBudget)
                 );
                 suitableProducts.push(sorted[0]);
@@ -187,7 +187,7 @@ Chú ý:
         if (candidates.length === 0) return null;
         if (candidates.length === 1) return candidates[0];
 
-        const productsInfo = candidates.map((p, idx) => 
+        const productsInfo = candidates.map((p, idx) =>
             `${idx + 1}. ${p.name} - ${p.price.toLocaleString()}đ (Stock: ${p.stock})`
         ).join('\n');
 
@@ -217,7 +217,7 @@ Hãy chọn 1 sản phẩm phù hợp nhất và trả về JSON:
 
             const result = JSON.parse(response.choices[0].message.content);
             const selected = candidates[result.selectedIndex - 1];
-            
+
             return {
                 ...selected,
                 aiReason: result.reason
@@ -225,7 +225,7 @@ Hãy chọn 1 sản phẩm phù hợp nhất và trả về JSON:
         } catch (error) {
             console.error('Error selecting product with AI:', error);
             // Fallback: return product closest to budget
-            return candidates.reduce((best, current) => 
+            return candidates.reduce((best, current) =>
                 Math.abs(current.price - budget) < Math.abs(best.price - budget) ? current : best
             );
         }

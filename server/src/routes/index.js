@@ -82,7 +82,7 @@ function routes(app) {
     app.post('/api/update-quantity', cartRoutes);
     app.get('/api/get-cart-build-pc', cartRoutes);
     app.post('/api/delete-all-cart-build-pc', cartRoutes);
-    
+
     //// AI PC Builder
     app.post('/api/ai-recommend-components', aiPcBuilderRoutes);
     ///// payments
