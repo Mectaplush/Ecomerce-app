@@ -3,6 +3,7 @@ const { OK, Created } = require('../core/success.response');
 const { Op } = require('sequelize');
 const path = require('path');
 const fs = require('fs').promises;
+const { cloudinary } = require('../config/cloudinary');
 
 /**
  * Parse CSV row handling quoted fields and escaped quotes
@@ -166,46 +167,42 @@ async function updateProductEmbeddings(product, oldImages = null) {
 }
 
 /**
-     * Process base64 image uploads
+     * Process base64 image uploads to Cloudinary
      * @param {Array} imageFiles - Array of {name, data, type} objects
-     * @returns {Promise<Array>} Array of uploaded image URLs
+     * @returns {Promise<Array>} Array of uploaded image URLs from Cloudinary
      */
 async function processImageUploads(imageFiles) {
-    const src_path = 'src/uploads/images';
-    const url = 'http://localhost:3000/uploads/images';
-
     const uploadedUrls = [];
-    const uploadDir = path.join(__dirname, `../../${src_path}`);
-    // Ensure upload directory exists
-    await fs.mkdir(uploadDir, { recursive: true });
 
     for (const imageFile of imageFiles) {
         try {
-            // Extract base64 data
-            const matches = imageFile.data.match(/^data:image\/([a-zA-Z]*);base64,(.+)$/);
-            if (!matches || matches.length !== 3) {
+            // Validate base64 data format
+            if (!imageFile.data || !imageFile.data.startsWith('data:image/')) {
                 console.warn('Invalid base64 image data:', imageFile.name);
                 continue;
             }
 
-            const imageType = matches[1];
-            const imageBuffer = Buffer.from(matches[2], 'base64');
-
-            // Generate unique filename
+            // Generate unique public_id for Cloudinary
             const timestamp = Date.now();
             const randomString = Math.random().toString(36).substring(2, 15);
-            const filename = `product_${timestamp}_${randomString}.${imageType}`;
-            const filepath = path.join(uploadDir, filename);
+            const publicId = `product_${timestamp}_${randomString}`;
 
-            // Write file
-            await fs.writeFile(filepath, imageBuffer);
+            // Upload to Cloudinary
+            const result = await cloudinary.uploader.upload(imageFile.data, {
+                folder: 'shop-pc/products',
+                public_id: publicId,
+                resource_type: 'image',
+                transformation: [
+                    { quality: 'auto:good' },
+                    { fetch_format: 'auto' }
+                ]
+            });
 
-            // Generate URL (adjust based on your static file serving setup)
-            const imageUrl = `${url}/${filename}`;
-            uploadedUrls.push(imageUrl);
+            // Store the secure URL
+            uploadedUrls.push(result.secure_url);
 
         } catch (error) {
-            console.error('Failed to process image:', imageFile.name, error);
+            console.error('Failed to upload image to Cloudinary:', imageFile.name, error);
             // Continue with other images instead of failing completely
         }
     }
@@ -1350,23 +1347,28 @@ class controllerProducts {
     }
 
     /**
-     * Remove unused images from filesystem
+     * Remove unused images from Cloudinary
      * @param {Array} imageUrls - URLs of images to remove
      */
     async removeUnusedImages(imageUrls) {
         for (const url of imageUrls) {
             try {
-                // Extract filename from URL
-                const filename = path.basename(url);
-                const filepath = path.join(__dirname, '../../uploads/products', filename);
-
-                // Check if file exists and remove
-                await fs.access(filepath);
-                await fs.unlink(filepath);
-                console.log('Removed unused image:', filename);
+                // Extract public_id from Cloudinary URL
+                // Example URL: https://res.cloudinary.com/xxx/image/upload/v123/shop-pc/products/product_123.jpg
+                const matches = url.match(/\/shop-pc\/products\/([^\/]+)\.[a-z]+$/i);
+                
+                if (matches && matches[1]) {
+                    const publicId = `shop-pc/products/${matches[1]}`;
+                    
+                    // Delete from Cloudinary
+                    await cloudinary.uploader.destroy(publicId);
+                    console.log('Removed unused image from Cloudinary:', publicId);
+                } else {
+                    console.warn('Could not extract public_id from URL:', url);
+                }
             } catch (error) {
-                // File might not exist or be in use - this is not critical
-                console.warn('Could not remove image:', url, error.message);
+                // Image might not exist on Cloudinary - this is not critical
+                console.warn('Could not remove image from Cloudinary:', url, error.message);
             }
         }
     }
