@@ -2,7 +2,7 @@ import classNames from 'classnames/bind';
 import styles from './Cart.module.scss';
 import Header from '../../Components/Header/Header';
 import AddressAutocomplete from '../../Components/AddressAutocomplete/AddressAutocomplete';
-import { Card, Table, Input, Form, Button, Checkbox, Space, message, InputNumber } from 'antd';
+import { Card, Table, Input, Form, Button, Checkbox, Space, message, InputNumber, Spin } from 'antd';
 import { DeleteOutlined, PhoneOutlined, EnvironmentOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -14,6 +14,7 @@ import {
 import { useStore } from '../../hooks/useStore';
 import Footer from '../../Components/Footer/Footer';
 import { useNavigate } from 'react-router-dom';
+import { calculateShippingFee } from '../../services/shippingAPI';
 
 const cx = classNames.bind(styles);
 
@@ -24,9 +25,33 @@ function Cart() {
 
     const navigate = useNavigate();
 
+    // Calculate original total (before discount)
+    const originalTotal = useMemo(() => {
+        return dataCart.reduce((total, item) => {
+            const originalPrice =
+                item.product.discount > 0 ? item.product.price / (1 - item.product.discount / 100) : item.product.price;
+            return total + originalPrice * item.quantity;
+        }, 0);
+    }, [dataCart]);
+
+    // Calculate total after product discounts
     const totalPrice = useMemo(() => {
         return dataCart.reduce((total, item) => total + item.totalPrice, 0);
     }, [dataCart]);
+
+    // Calculate total discount amount
+    const totalDiscount = useMemo(() => {
+        return originalTotal - totalPrice;
+    }, [originalTotal, totalPrice]);
+
+    // State for shipping fee
+    const [shippingFee, setShippingFee] = useState(0);
+    const [isCalculatingShipping, setIsCalculatingShipping] = useState(false);
+
+    // Calculate final amount (after discount + shipping)
+    const finalAmount = useMemo(() => {
+        return totalPrice + shippingFee;
+    }, [totalPrice, shippingFee]);
 
     const handleDeleteCart = async (id) => {
         try {
@@ -288,6 +313,41 @@ function Cart() {
         return () => clearTimeout(timeoutId);
     }, [fullName, phone, address, dataUser?.id]);
 
+    // Calculate shipping fee when address or cart changes
+    useEffect(() => {
+        const calculateShipping = async () => {
+            if (!address || dataCart.length === 0) {
+                setShippingFee(0);
+                return;
+            }
+
+            setIsCalculatingShipping(true);
+            try {
+                // Calculate total weight (assume average 500g per product)
+                const totalWeight = dataCart.reduce((sum, item) => sum + item.quantity * 500, 0);
+
+                const result = await calculateShippingFee(address, totalWeight, totalPrice);
+                setShippingFee(result.fee);
+
+                if (result.freeShipping) {
+                    message.success(result.message);
+                }
+            } catch (error) {
+                console.error('Shipping calculation error:', error);
+                // Set default shipping fee on error
+                setShippingFee(30000);
+            } finally {
+                setIsCalculatingShipping(false);
+            }
+        };
+
+        const timeoutId = setTimeout(() => {
+            calculateShipping();
+        }, 800); // Debounce shipping calculation
+
+        return () => clearTimeout(timeoutId);
+    }, [address, dataCart, totalPrice]);
+
     const handlePayment = async (typePayment) => {
         if (!checkBox) {
             message.error('Bạn phải đồng ý với các Điều kiện giao dịch chung của website');
@@ -298,10 +358,10 @@ function Cart() {
             return;
         }
 
-        // Kiểm tra giới hạn tổng tiền trước khi thanh toán
-        if (totalPrice > 1000000000) {
+        // Kiểm tra giới hạn tổng tiền trước khi thanh toán (including shipping)
+        if (finalAmount > 1000000000) {
             message.error(
-                `Tổng giá trị đơn hàng ${totalPrice.toLocaleString(
+                `Tổng giá trị đơn hàng ${finalAmount.toLocaleString(
                     'vi-VN',
                 )} VNĐ vượt quá giới hạn cho phép (1,000,000,000 VNĐ). Vui lòng giảm số lượng sản phẩm.`,
             );
@@ -377,10 +437,7 @@ function Cart() {
                                         />
                                     </Form.Item>
 
-                                    <AddressAutocomplete
-                                        value={address}
-                                        onChange={setAddress}
-                                    />
+                                    <AddressAutocomplete value={address} onChange={setAddress} />
 
                                     <Form.Item label="Ghi chú">
                                         <Input.TextArea
@@ -397,36 +454,83 @@ function Cart() {
                                 <Space direction="vertical" style={{ width: '100%' }}>
                                     <div className={cx('total-section')}>
                                         <p>
-                                            <span>Tổng cộng:</span>
+                                            <span>Tổng tiền hàng:</span>
+                                            <span>{originalTotal.toLocaleString()} đ</span>
+                                        </p>
+                                        {totalDiscount > 0 && (
+                                            <p>
+                                                <span>Giảm giá sản phẩm:</span>
+                                                <span style={{ color: '#52c41a' }}>
+                                                    -{totalDiscount.toLocaleString()} đ
+                                                </span>
+                                            </p>
+                                        )}
+                                        <p>
+                                            <span>Tạm tính:</span>
                                             <span>{totalPrice.toLocaleString()} đ</span>
+                                        </p>
+                                        <p>
+                                            <span>
+                                                Phí vận chuyển:
+                                                {isCalculatingShipping && (
+                                                    <Spin size="small" style={{ marginLeft: 8 }} />
+                                                )}
+                                            </span>
+                                            <span>
+                                                {shippingFee === 0 && address ? (
+                                                    <span style={{ color: '#52c41a' }}>Miễn phí</span>
+                                                ) : shippingFee > 0 ? (
+                                                    `${shippingFee.toLocaleString()} đ`
+                                                ) : (
+                                                    <span style={{ color: '#999' }}>Nhập địa chỉ</span>
+                                                )}
+                                            </span>
                                         </p>
                                         <p>
                                             <span>Giảm giá Voucher:</span>
                                             <span>0 đ</span>
                                         </p>
-                                        <p>
-                                            <span>Thành tiền:</span>
-                                            <span style={{ color: totalPrice > 1000000000 ? '#ff4d4f' : '#ee4d2d' }}>
-                                                {totalPrice.toLocaleString()} đ
+                                        <div className={cx('divider')} />
+                                        <p className={cx('final-amount')}>
+                                            <span style={{ fontWeight: 'bold', fontSize: '16px' }}>Thành tiền:</span>
+                                            <span
+                                                style={{
+                                                    color: finalAmount > 1000000000 ? '#ff4d4f' : '#ee4d2d',
+                                                    fontWeight: 'bold',
+                                                    fontSize: '18px',
+                                                }}
+                                            >
+                                                {finalAmount.toLocaleString()} đ
                                             </span>
                                         </p>
-                                        <p>(Giá đã bao gồm VAT)</p>
-                                        {totalPrice > 1000000000 && (
+                                        <p style={{ fontSize: '12px', color: '#999', marginTop: '-8px' }}>
+                                            (Giá đã bao gồm VAT)
+                                        </p>
+                                        {finalAmount > 1000000000 && (
                                             <div className={cx('warning-box')}>
                                                 <p className={cx('warning-title')}>
                                                     ⚠️ Cảnh báo: Vượt quá giới hạn cho phép
                                                 </p>
                                                 <p className={cx('warning-message')}>
-                                                    Tổng giá trị giỏ hàng không được vượt quá 1,000,000,000 VNĐ
+                                                    Tổng giá trị đơn hàng không được vượt quá 1,000,000,000 VNĐ
                                                 </p>
                                             </div>
                                         )}
 
                                         {/* Thông báo khi gần đạt giới hạn */}
-                                        {totalPrice > 900000000 && totalPrice <= 1000000000 && (
+                                        {finalAmount > 900000000 && finalAmount <= 1000000000 && (
                                             <div className={cx('info-box')}>
                                                 <p className={cx('info-message')}>
                                                     💡 Lưu ý: Bạn đang gần đạt giới hạn cho phép (1 tỷ VNĐ)
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Thông báo miễn phí vận chuyển */}
+                                        {totalPrice >= 5000000 && (
+                                            <div className={cx('success-box')}>
+                                                <p className={cx('success-message')}>
+                                                    🎉 Đơn hàng được miễn phí vận chuyển!
                                                 </p>
                                             </div>
                                         )}
@@ -441,7 +545,7 @@ function Cart() {
                                             onClick={() => handlePayment('COD')}
                                             type="primary"
                                             block
-                                            disabled={!checkBox || totalPrice > 1000000000}
+                                            disabled={!checkBox || finalAmount > 1000000000}
                                         >
                                             Thanh toán khi nhận hàng
                                         </Button>
@@ -449,7 +553,7 @@ function Cart() {
                                             onClick={() => handlePayment('MOMO')}
                                             type="default"
                                             block
-                                            disabled={!checkBox || totalPrice > 1000000000}
+                                            disabled={!checkBox || finalAmount > 1000000000}
                                         >
                                             Thanh toán qua MOMO
                                         </Button>
@@ -457,7 +561,7 @@ function Cart() {
                                             onClick={() => handlePayment('VNPAY')}
                                             type="primary"
                                             block
-                                            disabled={!checkBox || totalPrice > 1000000000}
+                                            disabled={!checkBox || finalAmount > 1000000000}
                                         >
                                             Thanh toán qua VNPAY
                                         </Button>

@@ -349,7 +349,7 @@ function Contact() {
                                 <div>
                                     <Title level={4}>Địa chỉ cửa hàng</Title>
                                     <Space direction="vertical" style={{ width: '100%' }}>
-                                        <Card size="small" title="SHOWROOM TP.HỒ CHÍ MINH 1" style={{ marginBottom: '15px' }}>
+                                        <Card size="small" title="CỬA HÀNG 1 TP.HỒ CHÍ MINH" style={{ marginBottom: '15px' }}>
                                             <Space align="start" style={{display:'inline'}}>
                                                 <EnvironmentOutlined />
                                                 <Paragraph style={{ margin: 0 }}>
@@ -363,16 +363,16 @@ function Contact() {
                                             </Space>
                                         </Card>
 
-                                        <Card size="small" title="SHOWROOM TP HỒ CHÍ MINH 2">
+                                        <Card size="small" title="CỬA HÀNG 2 TP HỒ CHÍ MINH">
                                             <Space align="start" style={{display:'inline'}}>
                                                 <EnvironmentOutlined />
                                                 <Paragraph style={{ margin: 0 }}>
-                                                    2 Tôn Đức Thắng, phường Bến Nghé quận 1, TP Hồ Chí Minh
+                                                    Sắp có ...
                                                 </Paragraph>
                                             </Space>
                                             <Space align="start" style={{display:'inline'}}>
                                                 <PhoneOutlined />
-                                                <Paragraph style={{ margin: 0 }}>012.234.5678 (Liên hệ 24/7)</Paragraph>
+                                                <Paragraph style={{ margin: 0 }}>Sắp có ...</Paragraph>
                                             </Space>
                                         </Card>
                                     </Space>

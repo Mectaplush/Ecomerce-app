@@ -10,7 +10,7 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
     const [wards, setWards] = useState([]);
     const [streetSuggestions, setStreetSuggestions] = useState([]);
     const [loading, setLoading] = useState(false);
-    
+
     const [selectedProvince, setSelectedProvince] = useState(null);
     const [selectedDistrict, setSelectedDistrict] = useState(null);
     const [selectedWard, setSelectedWard] = useState(null);
@@ -26,21 +26,23 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
             console.log('AddressAutocomplete: Fetching provinces...');
             const data = await addressAPI.getProvinces();
             console.log('AddressAutocomplete: Received provinces data:', data);
-            
+
             if (!data || !Array.isArray(data)) {
                 console.error('Invalid provinces data received:', data);
                 message.error('Dữ liệu tỉnh/thành phố không hợp lệ');
                 return;
             }
-            
+
             // Handle both formats: direct array or nested structure
             const provinceList = Array.isArray(data) ? data : data.data || [];
-            
-            setProvinces(provinceList.map(item => ({
-                value: item.code,
-                label: item.name,
-                fullName: item.name
-            })));
+
+            setProvinces(
+                provinceList.map((item) => ({
+                    value: item.code,
+                    label: item.name,
+                    fullName: item.name,
+                })),
+            );
         } catch (error) {
             console.error('AddressAutocomplete: Error fetching provinces:', error);
             message.warning('Không thể tải danh sách tỉnh/thành phố. Vui lòng thử lại sau.');
@@ -51,11 +53,13 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
         try {
             const data = await addressAPI.getDistricts(provinceCode);
             const districtList = Array.isArray(data) ? data : [];
-            setDistricts(districtList.map(item => ({
-                value: item.code,
-                label: item.name,
-                fullName: item.name
-            })));
+            setDistricts(
+                districtList.map((item) => ({
+                    value: item.code,
+                    label: item.name,
+                    fullName: item.name,
+                })),
+            );
             setWards([]);
         } catch (error) {
             console.error('Error fetching districts:', error);
@@ -69,11 +73,13 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
         try {
             const data = await addressAPI.getWards(districtCode);
             const wardList = Array.isArray(data) ? data : [];
-            setWards(wardList.map(item => ({
-                value: item.code,
-                label: item.name,
-                fullName: item.name
-            })));
+            setWards(
+                wardList.map((item) => ({
+                    value: item.code,
+                    label: item.name,
+                    fullName: item.name,
+                })),
+            );
         } catch (error) {
             console.error('Error fetching wards:', error);
             message.warning('Không thể tải danh sách phường/xã');
@@ -93,15 +99,17 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
             try {
                 console.log('Searching for streets with query:', query, 'in', { province, district, ward });
                 const results = await addressAPI.searchAddresses(query, province, district, ward);
-                
+
                 console.log('Street search results:', results);
-                
-                const suggestions = (results || []).map((item, index) => ({
-                    value: `${item.houseNumber ? item.houseNumber + ' ' : ''}${item.road}`,
-                    label: `${item.houseNumber ? item.houseNumber + ' ' : ''}${item.road}`,
-                    key: `street-${index}`
-                })).filter(item => item.value.trim() !== '');
-                
+
+                const suggestions = (results || [])
+                    .map((item, index) => ({
+                        value: `${item.houseNumber ? item.houseNumber + ' ' : ''}${item.road}`,
+                        label: `${item.houseNumber ? item.houseNumber + ' ' : ''}${item.road}`,
+                        key: `street-${index}`,
+                    }))
+                    .filter((item) => item.value.trim() !== '');
+
                 console.log('Formatted suggestions:', suggestions);
                 setStreetSuggestions(suggestions);
             } catch (error) {
@@ -112,50 +120,45 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
                 setLoading(false);
             }
         }, 500),
-        []
+        [],
     );
 
     const handleProvinceChange = (provinceCode) => {
-        const province = provinces.find(p => p.value === provinceCode);
+        const province = provinces.find((p) => p.value === provinceCode);
         setSelectedProvince(province);
         setSelectedDistrict(null);
         setSelectedWard(null);
         setDistricts([]);
         setWards([]);
         setStreetAddress('');
-        
+
         if (provinceCode) {
             fetchDistricts(provinceCode);
         }
-        
+
         updateFullAddress('', '', '', province?.fullName || '');
     };
 
     const handleDistrictChange = (districtCode) => {
-        const district = districts.find(d => d.value === districtCode);
+        const district = districts.find((d) => d.value === districtCode);
         setSelectedDistrict(district);
         setSelectedWard(null);
         setWards([]);
         setStreetAddress('');
-        
+
         if (districtCode) {
             fetchWards(districtCode);
         }
-        
+
         updateFullAddress('', '', district?.fullName || '', selectedProvince?.fullName || '');
     };
 
     const handleWardChange = (wardCode) => {
-        const ward = wards.find(w => w.value === wardCode);
+        const ward = wards.find((w) => w.value === wardCode);
         setSelectedWard(ward);
         setStreetAddress('');
-        
-        updateFullAddress(
-            '',
-            ward?.fullName || '',
-            selectedDistrict?.fullName || '',
-            selectedProvince?.fullName || ''
-        );
+
+        updateFullAddress('', ward?.fullName || '', selectedDistrict?.fullName || '', selectedProvince?.fullName || '');
     };
 
     const handleStreetChange = (value) => {
@@ -164,9 +167,9 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
             value,
             selectedWard?.fullName || '',
             selectedDistrict?.fullName || '',
-            selectedProvince?.fullName || ''
+            selectedProvince?.fullName || '',
         );
-        
+
         if (selectedProvince && selectedDistrict && selectedWard && value.length >= 3) {
             searchStreets(value, selectedProvince.fullName, selectedDistrict.fullName, selectedWard.fullName);
         }
@@ -197,11 +200,7 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
                 />
             </Form.Item>
 
-            <Form.Item
-                label="Quận/Huyện"
-                required
-                rules={[{ required: true, message: 'Vui lòng chọn quận/huyện!' }]}
-            >
+            <Form.Item label="Quận/Huyện" required rules={[{ required: true, message: 'Vui lòng chọn quận/huyện!' }]}>
                 <Select
                     showSearch
                     placeholder="Chọn quận/huyện"
@@ -214,11 +213,7 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
                 />
             </Form.Item>
 
-            <Form.Item
-                label="Phường/Xã"
-                required
-                rules={[{ required: true, message: 'Vui lòng chọn phường/xã!' }]}
-            >
+            <Form.Item label="Phường/Xã" required rules={[{ required: true, message: 'Vui lòng chọn phường/xã!' }]}>
                 <Select
                     showSearch
                     placeholder="Chọn phường/xã"
@@ -236,7 +231,7 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
                 required
                 rules={[
                     { required: true, message: 'Vui lòng nhập số nhà và tên đường!' },
-                    { min: 3, message: 'Địa chỉ phải có ít nhất 3 ký tự!' }
+                    { min: 3, message: 'Địa chỉ phải có ít nhất 3 ký tự!' },
                 ]}
             >
                 <AutoComplete
@@ -248,10 +243,7 @@ const AddressAutocomplete = ({ value, onChange, form, disabled = false }) => {
                     disabled={!selectedWard || disabled}
                     style={{ width: '100%' }}
                 >
-                    <Input 
-                        prefix={<EnvironmentOutlined />}
-                        loading={loading}
-                    />
+                    <Input prefix={<EnvironmentOutlined />} loading={loading} />
                 </AutoComplete>
             </Form.Item>
 
