@@ -45,15 +45,15 @@ const PrintImage = ({ dataCart }) => {
                         </div>
                         <div className="company-info">
                             <div className="company-name">PCM</div>
-                            <div>Cơ sở 1: Số 83-85 Thái Hà, Trung Liệt, Đống Đa, Hà Nội</div>
-                            <div>Cơ sở 2: Số 40 Vĩnh Viễn, Phường 2, Quận 10, TP Hồ Chí Minh</div>
-                            <div>Hotline: 087.997.9997</div>
+                            <div>Cơ sở 1: 1 Võ Văn Ngân, Thủ Đức, TP. Hồ Chí Minh</div>
+                            <div>Cơ sở 2: Sắp Khai Trương</div>
+                            <div>Hotline: 012.345.6789</div>
                             <div>
                                 Website: <a href="http://www.pcmarket.vn">www.pcmarket.vn</a>
                             </div>
                             <div>Fanpage: PCM</div>
                             <div>
-                                <a href="https://m.me/pcmarket.vn">https://m.me/pcmarket.vn</a>
+                                <a href="https://m.me/pcmarket.vn">https://pcmarket.vn</a>
                             </div>
                         </div>
                     </div>
@@ -114,9 +114,9 @@ const PrintImage = ({ dataCart }) => {
                         <div>có thể bị thay đổi bất cứ lúc nào mà không kịp báo trước.</div>
                         <div>&nbsp;</div>
                         <div>Để biết thêm chi tiết, Quý khách vui lòng liên hệ</div>
-                        <div>Hotline 087.997.9997 hoặc hoặc nhắn tin vào fanpage</div>
+                        <div>Hotline 012.345.6789 hoặc hoặc nhắn tin vào fanpage</div>
                         <div>
-                            <a href="https://m.me/pcmarket.vn">https://m.me/pcmarket.vn</a>
+                            <a href="https://m.me/pcmarket.vn">https://pcmarket.vn</a>
                         </div>
                     </div>
                     <div className="thank-you">PCM CẢM ƠN QUÝ KHÁCH</div>

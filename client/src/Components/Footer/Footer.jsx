@@ -10,13 +10,13 @@ function Footer() {
         <div className={cx('wrapper')}>
             <div className={cx('container')}>
                 <div className={cx('showroom-section')}>
-                    <h2 className={cx('showroom-title')}>HỆ THỐNG CÁC SHOWROOM CỦA MÁY TÍNH PCM</h2>
+                    <h2 className={cx('showroom-title')}>HỆ THỐNG CÁC CỬA HÀNG CỦA MÁY TÍNH PCM</h2>
 
                     <div className={cx('showroom-list')}>
                         <div className={cx('showroom-item')}>
                             <div className={cx('showroom-header')}>
                                 <div className={cx('showroom-number')}>1</div>
-                                <div className={cx('showroom-name')}>SHOWROOM - QUẬN 1 - HỒ CHÍ MINH</div>
+                                <div className={cx('showroom-name')}>CỬA HÀNG - THỦ ĐỨC - HỒ CHÍ MINH</div>
                             </div>
                             <div className={cx('showroom-info')}>
                                 <div className={cx('info-item')}>
@@ -38,21 +38,21 @@ function Footer() {
                         <div className={cx('showroom-item')}>
                             <div className={cx('showroom-header')}>
                                 <div className={cx('showroom-number')}>2</div>
-                                <div className={cx('showroom-name')}>SHOWROOM QUẬN 1, HỒ CHÍ MINH</div>
+                                <div className={cx('showroom-name')}>CỬA HÀNG - QUẬN 1 - HỒ CHÍ MINH (SẮP CÓ)</div>
                             </div>
                             <div className={cx('showroom-info')}>
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faMapMarkerAlt} />
-                                    <span>Địa chỉ: 2 Tôn Đức Thắng, phường Bến Nghé, Quận 1, TP. Hồ Chí Minh</span>
+                                    <span>Địa chỉ: </span>
                                 </div>
 
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faPhone} />
-                                    <span>Liên hệ 24/7 Tel: 078.623.0803</span>
+                                    <span>Liên hệ 24/7 Tel: </span>
                                 </div>
                                 <div className={cx('info-item')}>
                                     <FontAwesomeIcon icon={faClock} />
-                                    <span>Thời gian mở cửa: Từ 9h00-20h00 hàng ngày</span>
+                                    <span>Thời gian mở cửa: </span>
                                 </div>
                             </div>
                         </div>

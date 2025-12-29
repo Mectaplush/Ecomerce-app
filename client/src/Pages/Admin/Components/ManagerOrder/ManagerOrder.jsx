@@ -109,13 +109,13 @@ function ManagerOrder() {
             title: 'Mã đơn hàng',
             dataIndex: 'idPayment',
             key: 'idPayment',
-            width: '15%',
+            width: '20%',
         },
         {
             title: 'Khách hàng',
             dataIndex: 'fullName',
             key: 'fullName',
-            width: '15%',
+            width: '10%',
         },
         {
             title: 'Số điện thoại',
