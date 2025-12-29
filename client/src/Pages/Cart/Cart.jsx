@@ -14,7 +14,7 @@ import {
 import { useStore } from '../../hooks/useStore';
 import Footer from '../../Components/Footer/Footer';
 import { useNavigate } from 'react-router-dom';
-import { calculateShippingFee } from '../../services/shippingAPI';
+import { calculateShippingFeeGHN } from '../../services/shippingAPI';
 
 const cx = classNames.bind(styles);
 
@@ -277,6 +277,170 @@ function Cart() {
     const [address, setAddress] = useState('');
     const [note, setNote] = useState('');
 
+    /**
+     * Extract district and ward from Vietnamese address
+     * Address format: Street, Ward, District, City
+     * Example: "123 Đường ABC, Phường XYZ, Quận 1, TP Hồ Chí Minh"
+     */
+    const parseAddress = (addressString) => {
+        if (!addressString) return { district: null, ward: null, province: null };
+
+        const parts = addressString.split(',').map(s => s.trim());
+        
+        let district = null;
+        let ward = null;
+        let province = null;
+
+        // Find district (Quận/Huyện/Thành phố/Thị xã)
+        for (const part of parts) {
+            if (part.match(/^(Quận|Huyện|Thành phố|Thị xã|TP)\s+/i)) {
+                district = part;
+            } else if (part.match(/^(Phường|Xã|Thị trấn|TT)\s+/i)) {
+                ward = part;
+            } else if (part.match(/^(Tỉnh|Thành phố)\s+/i) || 
+                       part.match(/(Hà Nội|TP Hồ Chí Minh|Đà Nẵng|Hải Phòng|Cần Thơ)/i)) {
+                province = part;
+            }
+        }
+
+        return { district, ward, province };
+    };
+
+    /**
+     * Get GHN District ID and Ward Code from address
+     * Calls GHN master data API to convert location names to IDs
+     */
+    const getGHNLocationIds = async (addressString) => {
+        const { district, ward, province } = parseAddress(addressString);
+        
+        if (!district || !ward) {
+            console.warn('Cannot extract district/ward from address:', addressString);
+            return { districtId: null, wardCode: null };
+        }
+
+        try {
+            const GHN_TOKEN = import.meta.env.VITE_GHN_TOKEN;
+            const GHN_SHOP_ID = import.meta.env.VITE_GHN_SHOP_ID;
+
+            if (!GHN_TOKEN) {
+                console.error('GHN_TOKEN not configured in environment variables');
+                return { districtId: null, wardCode: null };
+            }
+
+            // Step 1: Get province ID
+            const provinceResponse = await fetch(
+                'https://dev-online-gateway.ghn.vn/shiip/public-api/master-data/province',
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Token': GHN_TOKEN
+                    }
+                }
+            );
+
+            const provinceData = await provinceResponse.json();
+            if (provinceData.code !== 200) {
+                throw new Error('Failed to fetch provinces from GHN');
+            }
+
+            // Find matching province
+            const normalizeText = (text) => {
+                return text
+                    .toLowerCase()
+                    .replace(/^(tỉnh|thành phố|tp)\s+/i, '')
+                    .trim();
+            };
+
+            const normalizedProvince = normalizeText(province || '');
+            const matchedProvince = provinceData.data.find(p => 
+                normalizeText(p.ProvinceName).includes(normalizedProvince) ||
+                normalizedProvince.includes(normalizeText(p.ProvinceName))
+            );
+
+            if (!matchedProvince) {
+                console.warn('Province not found in GHN:', province);
+                return { districtId: null, wardCode: null };
+            }
+
+            // Step 2: Get districts for this province
+            const districtResponse = await fetch(
+                `https://dev-online-gateway.ghn.vn/shiip/public-api/master-data/district?province_id=${matchedProvince.ProvinceID}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Token': GHN_TOKEN
+                    }
+                }
+            );
+
+            const districtData = await districtResponse.json();
+            if (districtData.code !== 200) {
+                throw new Error('Failed to fetch districts from GHN');
+            }
+
+            // Find matching district
+            const normalizedDistrict = normalizeText(district);
+            const matchedDistrict = districtData.data.find(d => 
+                normalizeText(d.DistrictName).includes(normalizedDistrict) ||
+                normalizedDistrict.includes(normalizeText(d.DistrictName))
+            );
+
+            if (!matchedDistrict) {
+                console.warn('District not found in GHN:', district);
+                return { districtId: null, wardCode: null };
+            }
+
+            // Step 3: Get wards for this district
+            const wardResponse = await fetch(
+                `https://dev-online-gateway.ghn.vn/shiip/public-api/master-data/ward?district_id=${matchedDistrict.DistrictID}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Token': GHN_TOKEN
+                    }
+                }
+            );
+
+            const wardData = await wardResponse.json();
+            if (wardData.code !== 200) {
+                throw new Error('Failed to fetch wards from GHN');
+            }
+
+            // Find matching ward
+            const normalizedWard = normalizeText(ward);
+            const matchedWard = wardData.data.find(w => 
+                normalizeText(w.WardName).includes(normalizedWard) ||
+                normalizedWard.includes(normalizeText(w.WardName))
+            );
+
+            if (!matchedWard) {
+                console.warn('Ward not found in GHN:', ward);
+                // Return district ID even if ward not found
+                return { districtId: matchedDistrict.DistrictID, wardCode: null };
+            }
+
+            console.log('GHN Location matched:', {
+                province: matchedProvince.ProvinceName,
+                district: matchedDistrict.DistrictName,
+                ward: matchedWard.WardName,
+                districtId: matchedDistrict.DistrictID,
+                wardCode: matchedWard.WardCode
+            });
+
+            return {
+                districtId: matchedDistrict.DistrictID,
+                wardCode: matchedWard.WardCode
+            };
+
+        } catch (error) {
+            console.error('Error getting GHN location IDs:', error);
+            return { districtId: null, wardCode: null };
+        }
+    };
+
     useEffect(() => {
         if (dataUser) {
             setFullName(dataUser.fullName);
@@ -326,7 +490,17 @@ function Cart() {
                 // Calculate total weight (assume average 500g per product)
                 const totalWeight = dataCart.reduce((sum, item) => sum + item.quantity * 500, 0);
 
-                const result = await calculateShippingFee(address, totalWeight, totalPrice);
+                // Extract district ID and ward code from address
+                const { districtId, wardCode } = await getGHNLocationIds(address);
+                
+                if (!districtId || !wardCode) {
+                    // Fallback to default shipping fee if location cannot be determined
+                    console.warn('Using default shipping fee - location not found');
+                    setShippingFee(30000);
+                    return;
+                }
+                
+                const result = await calculateShippingFeeGHN(address, totalWeight, districtId, wardCode);
                 setShippingFee(result.fee);
 
                 if (result.freeShipping) {

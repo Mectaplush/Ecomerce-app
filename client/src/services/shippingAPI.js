@@ -75,11 +75,15 @@ export const calculateShippingFee = async (address, totalWeight = 1000, totalVal
  * Real GHN API Integration (Example - requires API key)
  * Uncomment and configure when ready to use
  */
-/*
 export const calculateShippingFeeGHN = async (address, weight, toDistrictId, toWardCode) => {
     const GHN_API_URL = 'https://dev-online-gateway.ghn.vn/shiip/public-api/v2/shipping-order/fee';
-    const GHN_TOKEN = process.env.REACT_APP_GHN_TOKEN; // Add to .env file
-    const GHN_SHOP_ID = process.env.REACT_APP_GHN_SHOP_ID;
+    const GHN_TOKEN = import.meta.env.VITE_GHN_TOKEN;
+    const GHN_SHOP_ID = import.meta.env.VITE_GHN_SHOP_ID;
+
+    if (!GHN_TOKEN || !GHN_SHOP_ID) {
+        console.warn('GHN credentials not configured, using mock calculation');
+        return calculateShippingFee(address, weight);
+    }
 
     try {
         const response = await fetch(GHN_API_URL, {
@@ -91,7 +95,7 @@ export const calculateShippingFeeGHN = async (address, weight, toDistrictId, toW
             },
             body: JSON.stringify({
                 service_type_id: 2, // Standard service
-                from_district_id: 1542, // Your shop district ID
+                from_district_id: 1542, // Your shop district ID (replace with actual)
                 to_district_id: toDistrictId,
                 to_ward_code: toWardCode,
                 weight: weight,
@@ -101,7 +105,7 @@ export const calculateShippingFeeGHN = async (address, weight, toDistrictId, toW
         });
 
         const data = await response.json();
-        
+
         if (data.code === 200) {
             return {
                 fee: data.data.total,
@@ -119,13 +123,11 @@ export const calculateShippingFeeGHN = async (address, weight, toDistrictId, toW
         return calculateShippingFee(address, weight);
     }
 };
-*/
 
 /**
  * Real GHTK API Integration (Example - requires API key)
  * Uncomment and configure when ready to use
  */
-/*
 export const calculateShippingFeeGHTK = async (address, weight, province, district) => {
     const GHTK_API_URL = 'https://services.giaohangtietkiem.vn/services/shipment/fee';
     const GHTK_TOKEN = process.env.REACT_APP_GHTK_TOKEN; // Add to .env file
@@ -149,7 +151,7 @@ export const calculateShippingFeeGHTK = async (address, weight, province, distri
         });
 
         const data = await response.json();
-        
+
         if (data.success) {
             return {
                 fee: data.fee.fee,
@@ -168,4 +170,3 @@ export const calculateShippingFeeGHTK = async (address, weight, province, distri
         return calculateShippingFee(address, weight);
     }
 };
-*/
