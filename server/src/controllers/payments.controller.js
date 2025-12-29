@@ -241,8 +241,8 @@ class PaymentsController {
             var requestId = partnerCode + new Date().getTime();
             var orderId = requestId;
             var orderInfo = `Thanh toán ${findCart[0]?.userId}`; // nội dung giao dịch thanh toán
-            var redirectUrl = 'http://localhost:3000/api/check-payment-momo'; // 8080
-            var ipnUrl = 'http://localhost:3000/api/check-payment-momo';
+            var redirectUrl = process.env.BASE_URL + '/api/check-payment-momo'; // 8080
+            var ipnUrl = process.env.BASE_URL + '/api/check-payment-momo';
             var amount = totalPrice;
             var requestType = 'captureWallet';
             var extraData = ''; //pass empty value if your merchant does not have stores
@@ -316,7 +316,7 @@ class PaymentsController {
                 vnp_TxnRef: `${findCart[0]?.userId}_${paymentId}`,
                 vnp_OrderInfo: `${findCart[0]?.userId} `,
                 vnp_OrderType: ProductCode.Other,
-                vnp_ReturnUrl: `http://localhost:3000/api/check-payment-vnpay`, //
+                vnp_ReturnUrl: process.env.BASE_URL + `/api/check-payment-vnpay`, //
                 vnp_Locale: VnpLocale.VN, // 'vn' hoặc 'en'
                 vnp_CreateDate: dateFormat(new Date()), // tùy chọn, mặc định là hiện tại
                 vnp_ExpireDate: dateFormat(tomorrow), // tùy chọn
@@ -380,7 +380,7 @@ class PaymentsController {
             }
 
             // Store order details in session or pass via query params
-            return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=MOMO`);
+            return res.redirect(`${process.env.CLIENT_BASE_URL}/payment/${paymentId}?status=success&type=MOMO`);
 
         }
     }
@@ -438,7 +438,7 @@ class PaymentsController {
             }
 
             // Store order details in session or pass via query params
-            return res.redirect(`http://localhost:5173/payment/${paymentId}?status=success&type=VNPAY`);
+            return res.redirect(`${process.env.CLIENT_BASE_URL}/payment/${paymentId}?status=success&type=VNPAY`);
         }
     }
 

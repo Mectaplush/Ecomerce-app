@@ -73,7 +73,7 @@ function DashBoard() {
 
         const fetchPieChartData = async () => {
             try {
-                const response = await axios.get('http://localhost:3000/api/users/pie-chart');
+                const response = await axios.get(import.meta.env.VITE_API_URL + '/api/users/pie-chart');
                 const { categoryStats, orderStats } = response.data.metadata;
                 setCategoryStats(categoryStats);
                 setOrderStatusStats(orderStats);

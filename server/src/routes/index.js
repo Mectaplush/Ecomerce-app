@@ -112,6 +112,7 @@ function routes(app) {
     //// address
     app.use('/api', addressRoutes);
 
+    //// Obsolete
     app.post('/api/upload', upload.single('image'), (req, res) => {
         const file = req.file;
         if (!file) {
