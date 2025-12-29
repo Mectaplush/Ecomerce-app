@@ -14,7 +14,7 @@ const crypto = require('crypto');
 const { VNPay, ignoreLogger, ProductCode, VnpLocale, dateFormat } = require('vnpay');
 const { log } = require('util');
 const Typesense = require('typesense');
-
+const { getGHNLocationIds, calculateShippingFeeGHN } = require('../services/shippingAPI');
 // Initialize Typesense client
 const typesenseClient = new Typesense.Client({
     nodes: [
@@ -150,7 +150,20 @@ class PaymentsController {
             throw new BadRequestError('Vui lòng nhập thống tin giỏ hàng');
         }
 
-        const totalPrice = findCart.reduce((total, item) => total + item.totalPrice, 0);
+        let totalPrice = findCart.reduce((total, item) => total + item.totalPrice, 0);
+
+        // Calculate total weight (assume average 500g per product)
+        const totalWeight = findCart.reduce((sum, item) => sum + item.quantity * 500, 0);
+
+        const address = findCart[0].address;
+
+        // Extract district ID and ward code from address
+        const { districtId, wardCode } = await getGHNLocationIds(address);
+
+        if (districtId && wardCode) {
+            totalPrice += (await calculateShippingFeeGHN(address, totalWeight, districtId, wardCode)).fee;
+        }
+
         // Tạo mã thanh toán mới cho mỗi yêu cầu thanh toán
         const paymentId = generatePayID();
 

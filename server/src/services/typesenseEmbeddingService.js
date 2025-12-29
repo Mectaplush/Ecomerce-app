@@ -1040,7 +1040,7 @@ class TypesenseEmbeddingService {
                             content: [
                                 {
                                     type: "text",
-                                    text: "Describe this image in detail for search purposes:"
+                                    text: "Mô tả chi tiết hình ảnh cho mục đích tìm kiếm"
                                 },
                                 {
                                     type: "image_url",

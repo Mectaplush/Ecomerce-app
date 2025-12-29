@@ -265,7 +265,7 @@ ${
                 messages: [
                     {
                         role: 'system',
-                        content: 'Bạn là trợ lý bán hàng chuyên nghiệp với khả năng hiểu cả văn bản và hình ảnh thông qua AI CLIP. Chỉ sử dụng thông tin được cung cấp để trả lời.'
+                        content: 'Bạn là trợ lý bán hàng chuyên nghiệp với khả năng hiểu cả văn bản và hình ảnh thông qua AI CLIP. Chỉ sử dụng thông tin được cung cấp để trả lời..'
                     },
                     { role: 'user', content: prompt },
                 ],
