@@ -15,6 +15,7 @@ import {
     requestDeleteProduct,
     insertProductsByCsv,
     reEmbedAllProducts,
+    generateProductDataFromImages,
 } from '../../../../config/request';
 
 const cx = classNames.bind(styles);
@@ -66,6 +67,26 @@ function ManagerProduct() {
     const [reEmbedError, setReEmbedError] = useState('');
     const [reEmbedSuccess, setReEmbedSuccess] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Image generation states
+    const [generateModalOpen, setGenerateModalOpen] = useState(false);
+    const [generateLoading, setGenerateLoading] = useState(false);
+    const [generateError, setGenerateError] = useState('');
+    const [generateSuccess, setGenerateSuccess] = useState('');
+    const [selectedFields, setSelectedFields] = useState({
+        name: true,
+        description: true,
+        category: false,
+        componentType: false,
+        cpu: false,
+        mainboard: false,
+        ram: false,
+        storage: false,
+        gpu: false,
+        powerSupply: false,
+        case: false,
+        cooler: false
+    });
 
     const handleSearch = (value) => {
         setSearchKeyword(value);
@@ -489,6 +510,127 @@ function ManagerProduct() {
         }
     };
 
+    const handleGenerateInfo = () => {
+        if (fileList.length === 0) {
+            message.error('Vui lòng chọn ít nhất một hình ảnh để sinh thông tin!');
+            return;
+        }
+        setGenerateError('');
+        setGenerateSuccess('');
+        setGenerateModalOpen(true);
+    };
+
+    const handleFieldSelectionChange = (field, checked) => {
+        setSelectedFields(prev => ({
+            ...prev,
+            [field]: checked
+        }));
+    };
+
+    const convertImageToBase64 = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const handleGenerateConfirm = async () => {
+        const selectedFieldNames = Object.keys(selectedFields).filter(field => selectedFields[field]);
+        if (selectedFieldNames.length === 0) {
+            setGenerateError('Vui lòng chọn ít nhất một trường để sinh thông tin!');
+            return;
+        }
+
+        setGenerateLoading(true);
+        setGenerateError('');
+        setGenerateSuccess('');
+        
+        try {
+            // Convert images to base64
+            const imagesData = [];
+            for (const file of fileList) {
+                if (file.originFileObj) {
+                    const base64 = await convertImageToBase64(file.originFileObj);
+                    imagesData.push(base64);
+                } else if (file.url) {
+                    // For existing images, we need to fetch and convert them
+                    try {
+                        const response = await fetch(file.url);
+                        const blob = await response.blob();
+                        const base64 = await convertImageToBase64(blob);
+                        imagesData.push(base64);
+                    } catch (error) {
+                        console.warn('Failed to convert existing image:', file.url);
+                    }
+                }
+            }
+
+            if (imagesData.length === 0) {
+                throw new Error('Không thể xử lý hình ảnh được chọn');
+            }
+
+            const result = await generateProductDataFromImages(imagesData);
+            const generatedData = result.metadata;
+
+            // Update form fields based on selected fields
+            const formValues = {};
+            selectedFieldNames.forEach(field => {
+                if (generatedData[field]) {
+                    switch (field) {
+                        case 'category':
+                            // Find category ID from name
+                            const category = categories.find(cat => 
+                                cat.name.toLowerCase() === generatedData.category.toLowerCase()
+                            );
+                            if (category) {
+                                formValues.category = category.id;
+                            }
+                            break;
+                        case 'componentType':
+                            formValues.componentType = generatedData.componentType;
+                            setProductType(generatedData.componentType);
+                            break;
+                        case 'description':
+                            formValues.description = generatedData.description;
+                            setEditorContent(generatedData.description);
+                            break;
+                        case 'mainboard':
+                            formValues.main = generatedData.mainboard;
+                            break;
+                        case 'powerSupply':
+                            formValues.power = generatedData.powerSupply;
+                            break;
+                        case 'case':
+                            formValues.caseComputer = generatedData.case;
+                            break;
+                        case 'cooler':
+                            formValues.coolers = generatedData.cooler;
+                            break;
+                        default:
+                            formValues[field] = generatedData[field];
+                    }
+                }
+            });
+
+            // Update the form with generated values
+            form.setFieldsValue(formValues);
+            
+            setGenerateSuccess(`Đã sinh thông tin thành công cho ${selectedFieldNames.length} trường!`);
+            
+            // Close modal after a delay
+            setTimeout(() => {
+                setGenerateModalOpen(false);
+            }, 2000);
+
+        } catch (error) {
+            setGenerateError(error.response?.data?.message || error.message || 'Có lỗi xảy ra khi sinh thông tin');
+        } finally {
+            setGenerateLoading(false);
+        }
+    };
+
     return (
         <div className={cx('wrapper')}>
             <div className={cx('header')}>
@@ -669,42 +811,56 @@ function ManagerProduct() {
                                 </div>
                             )}
                         </Upload>
+                        {fileList.length > 0 && (
+                            <div style={{ marginTop: '12px' }}>
+                                <Button 
+                                    type="dashed" 
+                                    onClick={handleGenerateInfo}
+                                    style={{ width: '100%' }}
+                                >
+                                    🤖 Sinh thông tin từ hình ảnh
+                                </Button>
+                                <div style={{ marginTop: '4px', fontSize: '12px', color: '#666' }}>
+                                    Sinh thông tin bằng những hình ảnh được chọn cho những trường đã chọn
+                                </div>
+                            </div>
+                        )}
                     </Form.Item>
 
                     {productType === 'pc' && (
                         <>
                             <div className={cx('form-row')}>
-                                <Form.Item name="cpu" label="CPU" rules={[{ required: true }]}>
+                                <Form.Item name="cpu" label="CPU">
                                     <Input />
                                 </Form.Item>
-                                <Form.Item name="main" label="Mainboard" rules={[{ required: true }]}>
-                                    <Input />
-                                </Form.Item>
-                            </div>
-
-                            <div className={cx('form-row')}>
-                                <Form.Item name="ram" label="RAM" rules={[{ required: true }]}>
-                                    <Input />
-                                </Form.Item>
-                                <Form.Item name="storage" label="Ổ cứng" rules={[{ required: true }]}>
+                                <Form.Item name="main" label="Mainboard">
                                     <Input />
                                 </Form.Item>
                             </div>
 
                             <div className={cx('form-row')}>
-                                <Form.Item name="gpu" label="Card đồ họa" rules={[{ required: true }]}>
+                                <Form.Item name="ram" label="RAM">
                                     <Input />
                                 </Form.Item>
-                                <Form.Item name="power" label="Nguồn" rules={[{ required: true }]}>
+                                <Form.Item name="storage" label="Ổ cứng">
                                     <Input />
                                 </Form.Item>
                             </div>
 
                             <div className={cx('form-row')}>
-                                <Form.Item name="caseComputer" label="Case" rules={[{ required: true }]}>
+                                <Form.Item name="gpu" label="Card đồ họa">
                                     <Input />
                                 </Form.Item>
-                                <Form.Item name="coolers" label="Tản nhiệt" rules={[{ required: true }]}>
+                                <Form.Item name="power" label="Nguồn">
+                                    <Input />
+                                </Form.Item>
+                            </div>
+
+                            <div className={cx('form-row')}>
+                                <Form.Item name="caseComputer" label="Case">
+                                    <Input />
+                                </Form.Item>
+                                <Form.Item name="coolers" label="Tản nhiệt">
                                     <Input />
                                 </Form.Item>
                             </div>
@@ -881,7 +1037,183 @@ function ManagerProduct() {
                     </div>
                 )}
             </Modal>
-        </div>
+            <Modal
+                title="Sinh thông tin từ hình ảnh"
+                open={generateModalOpen}
+                onOk={handleGenerateConfirm}
+                onCancel={() => {
+                    setGenerateModalOpen(false);
+                    setGenerateError('');
+                    setGenerateSuccess('');
+                }}
+                confirmLoading={generateLoading}
+                okText="Sinh thông tin"
+                cancelText="Hủy"
+                width={600}
+            >
+                <div style={{ marginBottom: '16px' }}>
+                    <p><strong>🤖 Sinh thông tin sản phẩm từ hình ảnh</strong></p>
+                    <p>Chọn các trường thông tin bạn muốn AI tự động sinh ra từ {fileList.length} hình ảnh đã chọn:</p>
+                </div>
+
+                <div style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedFields.name}
+                                onChange={(e) => handleFieldSelectionChange('name', e.target.checked)}
+                                style={{ marginRight: '8px' }}
+                            />
+                            Tên sản phẩm
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedFields.description}
+                                onChange={(e) => handleFieldSelectionChange('description', e.target.checked)}
+                                style={{ marginRight: '8px' }}
+                            />
+                            Mô tả
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedFields.category}
+                                onChange={(e) => handleFieldSelectionChange('category', e.target.checked)}
+                                style={{ marginRight: '8px' }}
+                            />
+                            Danh mục
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center' }}>
+                            <input
+                                type="checkbox"
+                                checked={selectedFields.componentType}
+                                onChange={(e) => handleFieldSelectionChange('componentType', e.target.checked)}
+                                style={{ marginRight: '8px' }}
+                            />
+                            Loại sản phẩm
+                        </label>
+                    </div>
+                    
+                    <div style={{ marginTop: '12px' }}>
+                        <strong>Thông tin linh kiện (chỉ áp dụng cho PC hoặc linh kiện cụ thể):</strong>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '8px' }}>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.cpu}
+                                    onChange={(e) => handleFieldSelectionChange('cpu', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                CPU
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.mainboard}
+                                    onChange={(e) => handleFieldSelectionChange('mainboard', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Mainboard
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.ram}
+                                    onChange={(e) => handleFieldSelectionChange('ram', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                RAM
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.storage}
+                                    onChange={(e) => handleFieldSelectionChange('storage', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Ổ cứng
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.gpu}
+                                    onChange={(e) => handleFieldSelectionChange('gpu', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Card đồ họa
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.powerSupply}
+                                    onChange={(e) => handleFieldSelectionChange('powerSupply', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Nguồn
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.case}
+                                    onChange={(e) => handleFieldSelectionChange('case', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Case
+                            </label>
+                            <label style={{ display: 'flex', alignItems: 'center' }}>
+                                <input
+                                    type="checkbox"
+                                    checked={selectedFields.cooler}
+                                    onChange={(e) => handleFieldSelectionChange('cooler', e.target.checked)}
+                                    style={{ marginRight: '8px' }}
+                                />
+                                Tản nhiệt
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div style={{ marginBottom: '16px', padding: '8px', backgroundColor: '#f0f8ff', borderRadius: '6px', fontSize: '12px' }}>
+                    <strong>💡 Lưu ý:</strong>
+                    <ul style={{ marginBottom: 0, paddingLeft: '16px' }}>
+                        <li>AI sẽ phân tích {fileList.length} hình ảnh để sinh thông tin</li>
+                        <li>Kết quả có thể không chính xác 100%, vui lòng kiểm tra và chỉnh sửa</li>
+                        <li>Chỉ các trường được chọn sẽ được cập nhật</li>
+                        <li>Thông tin linh kiện chỉ có ích cho sản phẩm PC hoặc linh kiện cụ thể</li>
+                    </ul>
+                </div>
+
+                {/* Success Message */}
+                {generateSuccess && (
+                    <div style={{ 
+                        marginTop: '12px', 
+                        padding: '8px 12px', 
+                        backgroundColor: '#f6ffed', 
+                        border: '1px solid #b7eb8f',
+                        borderRadius: '6px',
+                        color: '#52c41a'
+                    }}>
+                        <strong>✓ {generateSuccess}</strong>
+                    </div>
+                )}
+
+                {/* Error Messages */}
+                {generateError && (
+                    <div style={{ 
+                        marginTop: '12px', 
+                        padding: '8px 12px', 
+                        backgroundColor: '#fff2f0', 
+                        border: '1px solid #ffccc7',
+                        borderRadius: '6px',
+                        color: '#ff4d4f'
+                    }}>
+                        <strong>⚠ Lỗi khi sinh thông tin:</strong>
+                        <p style={{ marginTop: '8px', marginBottom: '0' }}>{generateError}</p>
+                    </div>
+                )}
+            </Modal>        </div>
     );
 }
 

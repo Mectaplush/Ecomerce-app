@@ -1,10 +1,15 @@
 // services/typesenseEmbeddingService.js
 const { OpenAIEmbeddings } = require('@langchain/openai');
 const { typesenseClient } = require('../config/typesense.js');
-const { AutoTokenizer, AutoProcessor,
-    CLIPTextModelWithProjection,
-    CLIPVisionModelWithProjection,
-    RawImage } = require('@xenova/transformers');
+
+// Lazy-load transformers module
+let transformersModule = null;
+async function getTransformers() {
+    if (!transformersModule) {
+        transformersModule = await import('@xenova/transformers');
+    }
+    return transformersModule;
+}
 
 async function base64ToRawImage(base64) {
     // Remove data URL prefix if present (e.g. "data:image/png;base64,")
@@ -14,6 +19,7 @@ async function base64ToRawImage(base64) {
     }
     const buffer = Buffer.from(base64, 'base64');
     const blob = new Blob([buffer]);
+    const { RawImage } = await getTransformers();
     return await RawImage.fromBlob(blob);
 }
 
@@ -25,14 +31,24 @@ class TypesenseEmbeddingService {
         //     modelName: "text-embedding-3-small",
         // });
 
-        this.tokenizerTask = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
-        this.textModelTask = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
-        this.processorTask = AutoProcessor.from_pretrained('Xenova/clip-vit-base-patch32');
-        this.visionModelTask = CLIPVisionModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
+        this.tokenizerTask = null;
+        this.textModelTask = null;
+        this.processorTask = null;
+        this.visionModelTask = null;
 
         this.client = typesenseClient;
         this.embeddingsCollection = 'product_embeddings';
         this.productsCollection = 'products';
+    }
+
+    async initializeModels() {
+        if (!this.tokenizerTask) {
+            const { AutoTokenizer, AutoProcessor, CLIPTextModelWithProjection, CLIPVisionModelWithProjection } = await getTransformers();
+            this.tokenizerTask = AutoTokenizer.from_pretrained('Xenova/clip-vit-base-patch32');
+            this.textModelTask = CLIPTextModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
+            this.processorTask = AutoProcessor.from_pretrained('Xenova/clip-vit-base-patch32');
+            this.visionModelTask = CLIPVisionModelWithProjection.from_pretrained('Xenova/clip-vit-base-patch32');
+        }
     }
 
     /**
@@ -42,6 +58,7 @@ class TypesenseEmbeddingService {
      */
     async embedTextWithCLIP(text) {
         try {
+            await this.initializeModels();
             const tokenizer = await this.tokenizerTask;
             const textModel = await this.textModelTask;
 
@@ -75,6 +92,7 @@ class TypesenseEmbeddingService {
      */
     async embedImageWithCLIP(imageData) {
         try {
+            await this.initializeModels();
             if (typeof imageData === 'string' && (imageData.startsWith('http://') || imageData.startsWith('https://'))) {
                 const response = await fetch(imageData);
                 if (!response.ok) {
@@ -795,6 +813,182 @@ class TypesenseEmbeddingService {
 
         return uniqueResults.sort((a, b) => b.score - a.score);
     }
+
+    /**
+     * Generate product data from multiple base64 image data
+     * @param {string[]} imagesData - Array of base64 data URLs
+     * @param {Set<string>|string[]} componentTypes
+     * @param {Set<string>|string[]} categories
+     * @returns {Promise<{
+     *    name: string,
+     *    description: string,
+     *    category: string,
+     *    componentType: string,
+     *    cpu?: string,
+     *    mainboard?: string,
+     *    ram?: string,
+     *    storage?: string,
+     *    gpu?: string,
+     *    powerSupply?: string,
+     *    case?: string,
+     *    cooler?: string
+     * }>}
+     */
+    async generateProductDataFromImages(imagesData, componentTypes, categories) {
+        try {
+            if (!imagesData || imagesData.length === 0) {
+                throw new Error('No image data provided');
+            }
+
+            // Convert Sets to Arrays for easier handling
+            const productTypesList = Array.from(componentTypes || []);
+            const categoriesList = Array.from(categories || []);
+
+            // Process all images and get descriptions
+            const imageDescriptions = [];
+
+            for (const imageData of imagesData) {
+                try {
+                    // Validate that it's a proper data URL
+                    if (!imageData.startsWith('data:image/')) {
+                        console.warn('Invalid image data format:', imageData.substring(0, 50) + '...');
+                        continue;
+                    }
+
+                    // Use the base64 image data directly
+                    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${this.api_key}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            model: "gpt-4o",
+                            messages: [
+                                {
+                                    role: "user",
+                                    content: [
+                                        {
+                                            type: "text",
+                                            text: "Analyze this product image and describe what you see in detail, focusing on the product type, features, and specifications."
+                                        },
+                                        {
+                                            type: "image_url",
+                                            image_url: { url: imageData }
+                                        }
+                                    ]
+                                }
+                            ],
+                            max_tokens: 500
+                        })
+                    });
+
+                    const result = await response.json();
+                    if (result.choices && result.choices[0]) {
+                        imageDescriptions.push(result.choices[0].message.content);
+                    }
+                } catch (error) {
+                    console.warn('Error processing image data:', error);
+                }
+            }
+
+            if (imageDescriptions.length === 0) {
+                throw new Error('No images could be processed successfully');
+            }
+
+            // Generate product data based on all image descriptions
+            const combinedDescription = imageDescriptions.join(' ');
+
+            const productDataResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${this.api_key}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    model: "gpt-4o-mini",
+                    messages: [
+                        {
+                            role: "system",
+                            content: `You are a product data generator for an e-commerce PC shop. Based on the product images provided, generate appropriate product information.
+              
+              Available categories: ${categoriesList.join(', ')}
+              Available component types: ${productTypesList.join(', ')}
+              
+              Return ONLY a valid JSON object with this exact structure:
+              {
+                "name": "Product name (concise but descriptive)",
+                "description": "Detailed product description with specifications and features",
+                "category": "One of the available categories that best matches",
+                "componentType": "One of the available component types that best matches",
+                "cpu": "CPU model/specification if this is a PC build or CPU component (optional)",
+                "mainboard": "Mainboard model/specification if this is a PC build or mainboard component (optional)",
+                "ram": "RAM specification if this is a PC build or RAM component (optional)",
+                "storage": "Storage specification if this is a PC build or storage component (optional)",
+                "gpu": "GPU specification if this is a PC build or GPU component (optional)",
+                "powerSupply": "Power supply specification if this is a PC build or PSU component (optional)",
+                "case": "Case specification if this is a PC build or case component (optional)",
+                "cooler": "Cooler specification if this is a PC build or cooler component (optional)"
+              }
+              
+              Only include the optional component fields if they are relevant to the detected product.`
+                        },
+                        {
+                            role: "user",
+                            content: `Generate product data based on these image descriptions: ${combinedDescription}`
+                        }
+                    ],
+                    max_tokens: 1000,
+                    temperature: 0.3
+                })
+            });
+
+            const productDataResult = await productDataResponse.json();
+
+            if (!productDataResult.choices || !productDataResult.choices[0]) {
+                throw new Error('Failed to generate product data');
+            }
+
+            let productData;
+            try {
+                productData = JSON.parse(productDataResult.choices[0].message.content);
+            } catch (parseError) {
+                // Fallback if JSON parsing fails
+                const content = productDataResult.choices[0].message.content;
+                productData = {
+                    name: "Generated Product",
+                    description: content,
+                    category: categoriesList.length > 0 ? categoriesList[0] : "Other",
+                    componentType: productTypesList.length > 0 ? productTypesList[0] : "Other"
+                };
+            }
+
+            // Validate and ensure required fields, include optional component specifications
+            const result = {
+                name: productData.name || "Generated Product",
+                description: productData.description || combinedDescription,
+                category: productData.category || (categoriesList.length > 0 ? categoriesList[0] : "Other"),
+                componentType: productData.componentType || (productTypesList.length > 0 ? productTypesList[0] : "Other")
+            };
+
+            // Add optional component specifications if they exist
+            if (productData.cpu) result.cpu = productData.cpu;
+            if (productData.mainboard) result.mainboard = productData.mainboard;
+            if (productData.ram) result.ram = productData.ram;
+            if (productData.storage) result.storage = productData.storage;
+            if (productData.gpu) result.gpu = productData.gpu;
+            if (productData.powerSupply) result.powerSupply = productData.powerSupply;
+            if (productData.case) result.case = productData.case;
+            if (productData.cooler) result.cooler = productData.cooler;
+
+            return result;
+
+        } catch (error) {
+            console.error('Product data generation error:', error);
+            throw error;
+        }
+    }
+
 
     // Helper method to detect image MIME type from buffer
     detectImageMimeType(buffer) {

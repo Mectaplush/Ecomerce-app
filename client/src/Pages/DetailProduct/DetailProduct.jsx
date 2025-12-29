@@ -278,10 +278,15 @@ function DetailProduct() {
                         <span className={cx('current-price')}>
                             {(products?.price - (products?.price * products?.discount) / 100)?.toLocaleString()} đ
                         </span>
+                        {
+                        (products?.discount > 0) && (
+                        <div>
                         <span className={cx('original-price')}>{products?.price?.toLocaleString()}đ</span>
                         <span className={cx('discount')}>
                             Tiết kiệm: {((products?.price * products?.discount) / 100)?.toLocaleString()}đ
                         </span>
+                        </div>)
+                        }
                     </div>
 
                     {products.componentType === 'pc' && (

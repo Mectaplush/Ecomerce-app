@@ -1,10 +1,18 @@
 const productPreview = require('../models/productPreview');
-const { pipeline } = require('@xenova/transformers');
 const fs = require('fs');
 const path = require('path');
 
 const { BadRequestError } = require('../core/error.response');
 const { Created, OK } = require('../core/success.response');
+
+// Lazy-load transformers module
+let transformersModule = null;
+async function getTransformers() {
+    if (!transformersModule) {
+        transformersModule = await import('@xenova/transformers');
+    }
+    return transformersModule;
+}
 
 // Initialize the model pipeline (cache it to avoid reloading)
 let classificationPipeline = null;
@@ -13,6 +21,7 @@ let classificationPipeline = null;
 async function initializeModel() {
     if (!classificationPipeline) {
         try {
+            const { pipeline } = await getTransformers();
             // Use a multilingual sentiment analysis model that supports Vietnamese
             classificationPipeline = await pipeline(
                 'text-classification',
@@ -21,6 +30,7 @@ async function initializeModel() {
         } catch (error) {
             console.error('Error initializing multilingual sentiment model:', error);
             try {
+                const { pipeline } = await getTransformers();
                 // Second fallback: Use DistilBERT for sentiment analysis
                 classificationPipeline = await pipeline(
                     'text-classification',

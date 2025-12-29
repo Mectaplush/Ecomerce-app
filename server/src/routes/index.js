@@ -64,6 +64,7 @@ function routes(app) {
     app.post('/api/insert-products-by-csv', productRoutes);
     app.post('/api/re-embed-all-products', productRoutes);
     app.get('/api/similar-products/:productId', productRoutes);
+    app.post('/api/generate-product-data-from-images', productRoutes);
 
     //// category
     app.post('/api/create-category', categoryRoutes);

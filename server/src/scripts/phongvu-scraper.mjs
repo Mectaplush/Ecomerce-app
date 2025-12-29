@@ -6,8 +6,12 @@ const API_URL = "https://discovery.tekoapis.com/api/v2/search-skus-v2";
 function convertToCSV(products) {
     if (!products.length) return '';
 
+    console.log(products[0]);
+
     // CSV headers
-    const headers = ['name', 'price', 'description', 'images', 'stock', 'categoryId', 'componentType'];
+    const headers = products[0].componentType == 'pc' ?
+        ['name', 'price', 'description', 'images', 'stock', 'categoryId', 'componentType', 'cpu', 'main', "ram", 'storage', 'gpu', 'power', 'caseComputer', 'coolers'] :
+        ['name', 'price', 'description', 'images', 'stock', 'categoryId', 'componentType'];
 
     // Escape CSV values
     const escapeCSV = (value) => {
@@ -80,6 +84,86 @@ async function fetchPage({ slug, page }) {
     return res.data;
 }
 
+/**
+ * Parse PC specifications from text description
+ * @param {string} text - The text containing PC specifications
+ * @returns {Object} Object containing parsed PC components
+ */
+function parsePCSpecs(text) {
+    if (!text) {
+        return {
+            cpu: '',
+            main: '',
+            ram: '',
+            storage: '',
+            gpu: '',
+            power: '',
+            caseComputer: '',
+            coolers: ''
+        };
+    }
+
+    const specs = {
+        cpu: '',
+        main: '',
+        ram: '',
+        storage: '',
+        gpu: '',
+        power: '',
+        caseComputer: '',
+        coolers: ''
+    };
+
+    // Split text into lines
+    const lines = text.split('<br/>').map(line => line.trim()).filter(line => line);
+
+    for (const line of lines) {
+        // CPU patterns
+        if (/^CPU[\s:]/i.test(line)) {
+            specs.cpu = line.replace(/^CPU[\s:]+/i, '').trim();
+        }
+
+        // Mainboard patterns
+        else if (/^(Mainboard|Main|Bo mạch chủ)[\s:]/i.test(line)) {
+            specs.main = line.replace(/^(Mainboard|Main|Bo mạch chủ)[\s:]+/i, '').trim();
+        }
+
+        // RAM patterns
+        else if (/^RAM[\s:]/i.test(line)) {
+            specs.ram = line.replace(/^RAM[\s:]+/i, '').trim();
+        }
+
+        // Storage patterns (SSD, HDD, or generic storage)
+        else if (/^(SSD|HDD|Lưu trữ|Storage)[\s:]/i.test(line)) {
+            const storage = line.replace(/^(SSD|HDD|Lưu trữ|Storage)[\s:]+/i, '').trim();
+            // Append if storage already exists (multiple drives)
+            specs.storage = specs.storage ? `${specs.storage}, ${storage}` : storage;
+        }
+
+        // GPU/VGA patterns
+        else if (/^(VGA|GPU|Card màn hình|Đồ họa)[\s:]/i.test(line)) {
+            specs.gpu = line.replace(/^(VGA|GPU|Card màn hình|Đồ họa)[\s:]+/i, '').trim();
+        }
+
+        // Power Supply patterns
+        else if (/^(PSU|Nguồn|Power)[\s:]/i.test(line)) {
+            specs.power = line.replace(/^(PSU|Nguồn|Power)[\s:]+/i, '').trim();
+        }
+
+        // Case patterns
+        else if (/^Case[\s:]/i.test(line)) {
+            specs.caseComputer = line.replace(/^Case[\s:]+/i, '').trim();
+        }
+
+        // Cooler patterns
+        else if (/^(Tản nhiệt|Cooler|Cooling)[\s:]/i.test(line)) {
+            specs.coolers = line.replace(/^(Tản nhiệt|Cooler|Cooling)[\s:]+/i, '').trim();
+        }
+    }
+
+    return specs;
+}
+
 async function scrapeCategory(slug, categoryId, componentType = "pc") {
     let page = 1;
     let allProducts = [];
@@ -124,15 +208,24 @@ async function scrapeCategory(slug, categoryId, componentType = "pc") {
                     return description;
                 }
 
+                function random_between(min, max) {
+                    return Math.floor(Math.random() * (max - min + 1)) + min
+                }
+
+                let {
+                    cpu, main, ram, storage, gpu, power, caseComputer, coolers,
+                } = parsePCSpecs(detail?.productDetail?.shortDescription);
+
                 allProducts.push({
                     id: p.sku,
                     name: detail?.productInfo?.name || p.name,
-                    price: detail?.prices?.latestPrice || p.latestPrice || 999999999,
-                    description: detail?.productDetail?.description || detail?.productDetail?.shortDescription || "",
+                    price: ((price) => price && price > 0 ? price : random_between(20000, 40000) * 1000)(detail?.prices?.latestPrice || p.latestPrice),
+                    description: get_description(detail),
                     images: (detail?.productDetail.images || []).map(i => i.url).join(","),
-                    stock: detail?.availableQuantity || detail?.totalAvailable || Math.floor(Math.random() * (10 - 1 + 1)) + 1,
+                    stock: detail?.availableQuantity || detail?.totalAvailable || random_between(1, 10),
                     categoryId,
-                    componentType
+                    componentType,
+                    cpu, main, ram, storage, gpu, power, caseComputer, coolers,
                 });
 
                 // IMPORTANT: slower rate for detail pages
@@ -247,5 +340,5 @@ let tasks = [{
     })
 );
 
-await Promise.all(tasks);
-// await tasks[0];
+// await Promise.all(tasks);
+await tasks[0];

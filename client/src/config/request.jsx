@@ -420,6 +420,12 @@ export const reEmbedAllProducts = async () => {
     const res = await request.post('/api/re-embed-all-products');
     return res.data;
 };
+
+export const generateProductDataFromImages = async (imagesData) => {
+    const res = await request.post('/api/generate-product-data-from-images', { imagesData });
+    return res.data;
+};
+
 export const requestUpdateProductPreview = async (data) => {
     const res = await request.put('/api/update-product-preview', data);
     return res.data;
